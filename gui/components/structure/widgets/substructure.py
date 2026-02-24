@@ -6,5 +6,5 @@ class SubStructureWidget(StructureManagerWidget):
             self,
             controller=controller,
             chunk_name="str_sub_structure",
-            default_components=["Abutment", "Pier", "Pier Cap"]
+            default_components=["Abutment", "Pier", "Pier Cap", "Pedestal", "Bearing"]
         )

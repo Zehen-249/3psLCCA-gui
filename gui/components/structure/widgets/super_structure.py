@@ -12,5 +12,7 @@ class SuperStructureWidget(StructureManagerWidget):
                 "Expansion Joints",
                 "Wearing Coat",
                 "Parapets",
+                "Diaphragm",
+                "Cross Bracings"
             ],
         )

@@ -1,0 +1,12 @@
+{
+    "project_id": "proj_85ffeeb2",
+    "chunks": {
+        "general_info": "7e5942f9c5dd8b0d467decae47f8e69b59a0d1827e69a00a4aa4e2a19325b95a",
+        "str_foundation": "60474777227ba6d223f1bf377c8d9117cf94740376b30e2bf9fc2426ef6b9eb4",
+        "str_sub_structure": "24ce67bb61546c135357a79e4b92eeab36d729eb4a8e65d9e6a9e2bb3a1ece39",
+        "str_super_structure": "660655917746af2fecefae927b851d36ea72550b7902ae554a5c5f26795c666e",
+        "str_misc": "ec1d1a67749477b0b18c18480e6b35be0ff78821cce7b9e047570331e081b368"
+    },
+    "engine_version": "2.1.0",
+    "app_version": "1.0.0"
+}

@@ -1,3 +1,4 @@
+# /gui/projet_window.py
 import os
 
 from PySide6.QtCore import Qt
@@ -21,7 +22,6 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtGui import QAction
 
-from gui.project_controller import controller
 from gui.components.save_status_bar import SaveStatusBar
 from gui.components.logs import Logs
 from gui.components.global_info.main import GeneralInfo
@@ -37,10 +37,17 @@ from gui.components.home_page import HomePage
 
 
 class ProjectWindow(QMainWindow):
-    def __init__(self, manager):
+    def __init__(self, manager, controller=None):
         super().__init__()
         self.manager = manager
-        self.controller = controller
+
+        if controller is not None:
+            self.controller = controller
+        else:
+            from gui.project_controller import controller as default_controller
+
+            self.controller = default_controller
+
         self.project_id = None
 
         self.setWindowTitle("LCCA - Home")
@@ -52,8 +59,8 @@ class ProjectWindow(QMainWindow):
         self.status_bar = QStatusBar()
         self.setStatusBar(self.status_bar)
 
-        self._setup_home_ui()       # index 0 — must be first
-        self._setup_project_ui()    # index 1
+        self._setup_home_ui()  # index 0 — must be first
+        self._setup_project_ui()  # index 1
 
         # Wire controller signals
         self.controller.fault_occurred.connect(self._on_fault)
@@ -71,7 +78,7 @@ class ProjectWindow(QMainWindow):
 
     def _setup_home_ui(self):
         self.home_widget = HomePage(manager=self.manager)
-        self.main_stack.addWidget(self.home_widget)   # index 0
+        self.main_stack.addWidget(self.home_widget)  # index 0
 
     # ── PROJECT VIEW ──────────────────────────────────────────────────────────
 
@@ -190,12 +197,12 @@ class ProjectWindow(QMainWindow):
             "General Information": GeneralInfo(controller=self.controller),
             "Bridge Data": BridgeData(controller=self.controller),
             "Construction Work Data": StructureTabView(controller=self.controller),
-            "Traffic Data":           TrafficData(controller=self.controller),
-            "Financial Data":         FinancialData(controller=self.controller),
-            "Carbon Emission Data":   CarbonEmissionTabView(controller=self.controller),
+            "Traffic Data": TrafficData(controller=self.controller),
+            "Financial Data": FinancialData(controller=self.controller),
+            "Carbon Emission Data": CarbonEmissionTabView(controller=self.controller),
             "Maintenance and Repair": Maintenance(controller=self.controller),
-            "Recycling":              Recycling(controller=self.controller),
-            "Demolition":             Demolition(controller=self.controller),
+            "Recycling": Recycling(controller=self.controller),
+            "Demolition": Demolition(controller=self.controller),
             "Outputs": self.metadata_page,
         }
 
@@ -213,7 +220,7 @@ class ProjectWindow(QMainWindow):
         self.splitter.setSizes([220, 880])
 
         master_layout.addWidget(self.splitter, stretch=1)
-        self.main_stack.addWidget(self.project_widget)   # index 1
+        self.main_stack.addWidget(self.project_widget)  # index 1
 
     def _select_sidebar(self, item: QTreeWidgetItem):
         header = item.text(0)
@@ -244,10 +251,12 @@ class ProjectWindow(QMainWindow):
         )
         self.home_widget.refresh_project_list()
         self.main_stack.setCurrentWidget(self.home_widget)
+        self.manager.refresh_all_home_screens()
 
     def show_project_view(self):
         if self.has_project_loaded():
-            self.setWindowTitle(f"LCCA - {self.project_id}")
+            display = self.controller.active_display_name or self.project_id
+            self.setWindowTitle(f"LCCA - {display}")
             self.main_stack.setCurrentWidget(self.project_widget)
             self.content_stack.setCurrentWidget(self.widget_map["General Information"])
             items = self.sidebar.findItems("General Information", Qt.MatchExactly)
@@ -262,12 +271,12 @@ class ProjectWindow(QMainWindow):
     def _on_project_loaded(self):
         if self.controller.active_project_id:
             self.project_id = self.controller.active_project_id
-            self.setWindowTitle(f"LCCA - {self.project_id}")
+            display = self.controller.active_display_name or self.project_id
+            self.setWindowTitle(f"LCCA - {display}")
             self.metadata_page.setText(
-                f"<h2>Project Metadata</h2>"
-                f"<p><b>ID:</b> {self.project_id}</p>"
+                f"<h2>{display}</h2>" f"<p><b>Internal ID:</b> {self.project_id}</p>"
             )
-            self.status_bar.showMessage(f"Project: {self.project_id}")
+            self.status_bar.showMessage(f"Project: {display}")
             self.show_project_view()
 
     def _on_fault(self, error_message: str):
@@ -279,9 +288,10 @@ class ProjectWindow(QMainWindow):
         )
 
     # ── CLOSE ─────────────────────────────────────────────────────────────────
-
     def closeEvent(self, event):
         if self.controller.engine:
             self.controller.close_project()
+        self.project_id = None
         self.manager.remove_window(self)
+        self.manager.refresh_all_home_screens()
         event.accept()

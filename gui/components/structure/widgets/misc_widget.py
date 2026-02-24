@@ -12,5 +12,7 @@ class MiscWidget(StructureManagerWidget):
                 "Drainage Spouts",
                 "Asphalt Work",
                 "Utilities",
+                "Drainage",
+                "Waterproofing"
             ],
         )

@@ -1,3 +1,4 @@
+# gui/main.py
 import sys
 import os
 from PySide6.QtWidgets import QApplication, QSpinBox, QDoubleSpinBox

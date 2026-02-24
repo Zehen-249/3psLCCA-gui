@@ -17,6 +17,10 @@ class ProjectController(QObject):
         super().__init__()
         self.engine = None
         self.active_project_id = None
+        self.active_display_name = None
+        self.recovery_needed = False
+        self.recovery_health = None
+        
 
     def get_chunk(self, chunk_name: str) -> dict:
         """Helper for widgets to retrieve their specific data."""
@@ -25,31 +29,35 @@ class ProjectController(QObject):
             return self.engine.read_chunk(chunk_name)
         return {}
 
-    def init_project(self, project_id: str, is_new: bool = False) -> bool:
-        """Initialises or opens a project and wires callbacks."""
-        # CLEANUP: If a project is already open, close it properly first
+    def init_project(
+        self, project_id: str, is_new: bool = False, display_name: str = None
+    ) -> bool:
         if self.engine:
             self.close_project()
 
         if is_new:
-            self.engine, status = SafeChunkEngine.new(project_id)
+            self.engine, status = SafeChunkEngine.new(
+                project_id, display_name=display_name
+            )
         else:
             self.engine, status = SafeChunkEngine.open(project_id)
 
         if self.engine and self.engine.is_active():
             self.active_project_id = project_id
+            self.active_display_name = self.engine.display_name
+            self.recovery_needed = self.engine._recovery_needed
+            self.recovery_health = self.engine._recovery_health
 
-            # Wire engine callbacks
             self.engine.on_sync = lambda: self.sync_completed.emit()
             self.engine.on_status = lambda msg: self.status_message.emit(msg)
             self.engine.on_fault = lambda msg: self.fault_occurred.emit(msg)
             self.engine.on_dirty = lambda dirty: self.dirty_changed.emit(dirty)
 
             if is_new:
-                self.engine.create_checkpoint(label="initial", notes="Auto-checkpoint")
+                self.engine.create_checkpoint(
+                    label="initial", notes="Auto-checkpoint on creation."
+                )
 
-            # BROADCAST: Signal the UI. We use a singleShot to ensure
-            # the controller has finished its state update before UI reacts.
             QTimer.singleShot(0, self.project_loaded.emit)
             return True
 
@@ -85,7 +93,10 @@ class ProjectController(QObject):
             finally:
                 self.engine = None
                 self.active_project_id = None
+                self.active_display_name = None
                 self.dirty_changed.emit(False)
+                self.recovery_needed = False
+                self.recovery_health = None
 
     # --- Pass-through Checkpoint API ---
     def save_checkpoint(self, label: str = "manual", notes: str = "") -> str | None:
