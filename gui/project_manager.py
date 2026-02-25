@@ -85,23 +85,28 @@ class ProjectManager:
             # ── Show recovery dialog if needed ────────────────────────────────
             if target.controller.recovery_needed and not is_new:
                 from gui.components.recovery_dialog import RecoveryDialog
+                from PySide6.QtCore import QTimer
 
-                dlg = RecoveryDialog(
-                    engine=target.controller.engine,
-                    health=target.controller.recovery_health,
-                    parent=target,
-                )
-                dlg.exec()
+                def _show_recovery():
+                    dlg = RecoveryDialog(
+                        engine=target.controller.engine,
+                        health=target.controller.recovery_health,
+                        parent=target,
+                    )
+                    dlg.exec()
 
-                if dlg.was_cancelled():
-                    # User cancelled — close the window, don't open project
-                    target.controller.close_project()
-                    target.project_id = None
-                    target.show_home()
-                    target.show()
-                    target.activateWindow()
-                    self.refresh_all_home_screens()
-                    return
+                    if dlg.was_cancelled():
+                        target.controller.close_project()
+                        target.project_id = None
+                        target.show_home()
+                        self.refresh_all_home_screens()
+                    else:
+                        # Reload project data after recovery
+                        target.show_project_view()
+                        self.refresh_all_home_screens()
+
+                # Delay until after project_loaded signal fires and UI is shown
+                QTimer.singleShot(300, _show_recovery)
 
             print(f"[DEBUG] Manager: Success — {target.project_id}")
             target.show_project_view()

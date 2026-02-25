@@ -71,8 +71,35 @@ class ProjectWindow(QMainWindow):
         self.controller.dirty_changed.connect(
             lambda d: self.status_bar.showMessage("Unsaved changes...") if d else None
         )
-
+        self.controller.health_checked.connect(self._on_health_checked)
+        self.controller.recovery_suggested.connect(self._on_recovery_suggested)
         self.show_home()
+
+    def _on_health_checked(self, report: dict):
+        """Background health check completed — update status bar."""
+        cleaned = report.get("orphans_cleaned", 0)
+        if report.get("needs_recovery"):
+            self.status_bar.showMessage(
+                "⚠ Health check found issues — consider running recovery.", 8000
+            )
+        elif cleaned:
+            self.status_bar.showMessage(
+                f"Health check passed. {cleaned} orphaned objects cleaned.", 5000
+            )
+        else:
+            self.status_bar.showMessage("Health check passed.", 3000)
+
+    def _on_recovery_suggested(self, report: dict):
+        """Background check found issues not caught on open — show dialog."""
+        from gui.components.recovery_dialog import RecoveryDialog
+
+        issues = "\n".join(f"• {i}" for i in report.get("issues", []))
+        QMessageBox.warning(
+            self,
+            "Project Health Warning",
+            f"The background health check found issues:\n\n{issues}\n\n"
+            "Consider saving a checkpoint and running recovery from the File menu.",
+        )
 
     # ── HOME SCREEN ───────────────────────────────────────────────────────────
 
@@ -98,16 +125,28 @@ class ProjectWindow(QMainWindow):
 
         # File menu
         self.menuFile = QMenu("&File", self.menubar)
+
         for label in ["New", "Open"]:
             self.menuFile.addAction(QAction(label, self))
+
         self.menuFile.addSeparator()
+
         self.actionSave = QAction("Save", self)
         self.menuFile.addAction(self.actionSave)
+
         for label in ["Save As...", "Create a Copy", "Print"]:
             self.menuFile.addAction(QAction(label, self))
+
         self.menuFile.addSeparator()
+
         for label in ["Rename", "Export", "Version History", "Info"]:
             self.menuFile.addAction(QAction(label, self))
+
+        self.menuFile.addSeparator()
+
+        self.actionVerify = QAction("Verify Integrity", self)
+        self.actionVerify.triggered.connect(self._show_integrity_dialog)
+        self.menuFile.addAction(self.actionVerify)
 
         # Help menu
         self.menuHelp = QMenu("&Help", self.menubar)
@@ -279,6 +318,15 @@ class ProjectWindow(QMainWindow):
             self.status_bar.showMessage(f"Project: {display}")
             self.show_project_view()
 
+            # Show tamper warning if tamper log has entries
+            if self.controller.engine:
+                log = self.controller.engine.read_tamper_log()
+                if log:
+                    most_recent = log[-1]
+                    self.status_bar.showMessage(
+                        f"⚠ Tamper events detected — see File → Verify Integrity", 10000
+                    )
+
     def _on_fault(self, error_message: str):
         QMessageBox.critical(
             self,
@@ -295,3 +343,11 @@ class ProjectWindow(QMainWindow):
         self.manager.remove_window(self)
         self.manager.refresh_all_home_screens()
         event.accept()
+
+    def _show_integrity_dialog(self):
+        if not self.controller.engine:
+            return
+        from gui.components.tamper_dialog import TamperDialog
+
+        dlg = TamperDialog(engine=self.controller.engine, parent=self)
+        dlg.exec()

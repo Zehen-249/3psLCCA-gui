@@ -12,6 +12,7 @@ from PySide6.QtWidgets import (
     QLabel,
     QMessageBox,
     QCheckBox,
+    QComboBox,
 )
 from PySide6.QtCore import Qt, QTimer, QUrl
 from PySide6.QtGui import QDoubleValidator, QDesktopServices
@@ -19,7 +20,13 @@ import time
 import uuid
 import datetime
 from .base_table import StructureTableWidget
-from ...utils.definitions import FIELD_DEFINITIONS, BASE_DOCS_URL
+from ...utils.definitions import (
+    FIELD_DEFINITIONS,
+    BASE_DOCS_URL,
+    UNIT_TO_KG,
+    UNIT_DROPDOWN_DATA,
+    _CONSTRUCTION_UNITS,
+)
 
 # ---------------------------------------------------------------------------
 # Info Popup
@@ -37,7 +44,7 @@ class InfoPopup(QDialog):
         self.setMaximumWidth(460)
         self.setWindowFlags(self.windowFlags() & ~Qt.WindowContextHelpButtonHint)
         self.setMinimumHeight(420)
-        self.resize(500, 700)     
+        self.resize(500, 700)
 
         layout = QVBoxLayout(self)
         layout.setSpacing(10)
@@ -153,16 +160,6 @@ def _divider() -> QFrame:
 
 
 class MaterialDialog(QDialog):
-    """
-    Progressive dialog for adding / editing a material.
-
-    Sections:
-        1. Basic Information  — always visible
-        2. Carbon Emission    — toggled (default: checked)
-        3. Recyclability      — toggled (default: checked)
-        4. Categorization     — always visible
-    """
-
     def __init__(self, comp_name: str, parent=None, data: dict = None):
         super().__init__(parent)
         self.is_edit = data is not None
@@ -176,12 +173,10 @@ class MaterialDialog(QDialog):
         v = data.get("values", {}) if self.is_edit else {}
         s = data.get("state", {}) if self.is_edit else {}
 
-        # Outer layout holds scroll area + button bar
         outer = QVBoxLayout(self)
         outer.setContentsMargins(0, 0, 0, 8)
         outer.setSpacing(0)
 
-        # Scroll area for all form content
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         scroll.setFrameShape(QFrame.NoFrame)
@@ -201,11 +196,28 @@ class MaterialDialog(QDialog):
 
         self.name_in = QLineEdit(v.get("material_name", ""))
         self.qty_in = QLineEdit(str(v.get("quantity", "0.0")))
-        self.unit_in = QLineEdit(v.get("unit", "m3"))
+        self.qty_in.setValidator(dbl)
+
+        # Unit dropdown
+        self.unit_in = QComboBox()
+        self.unit_in.setMinimumHeight(30)
+        self.unit_in.wheelEvent = lambda event: event.ignore()
+        for category, units in _CONSTRUCTION_UNITS.units.items():
+            for code, info in units.items():
+                display = f"{code} — {info['name']}"  # e.g. "m3 — m³ , Cubic Meter"
+                self.unit_in.addItem(display, userData=code)
+                idx = self.unit_in.count() - 1
+                self.unit_in.setItemData(
+                    idx, f"Example: {info['example']}", Qt.ToolTipRole
+                )
+
+        current_unit = v.get("unit", "m3")
+        idx = self.unit_in.findData(current_unit)
+        if idx >= 0:
+            self.unit_in.setCurrentIndex(idx)
+
         self.rate_in = QLineEdit(str(v.get("rate", "0.0")))
         self.src_in = QLineEdit(v.get("rate_source", "Standard"))
-
-        self.qty_in.setValidator(dbl)
         self.rate_in.setValidator(dbl)
 
         for key, widget in [
@@ -234,15 +246,52 @@ class MaterialDialog(QDialog):
         cl.setSpacing(4)
 
         self.carbon_em_in = QLineEdit(str(v.get("carbon_emission", "0.0")))
-        self.carbon_unit_in = QLineEdit(v.get("carbon_unit", "kgCO2e/kg"))
-        self.conv_factor_in = QLineEdit(str(v.get("conversion_factor", "1.0")))
-
         self.carbon_em_in.setValidator(dbl)
+
+        # Carbon unit widget — "kgCO2e /" + dropdown
+        carbon_unit_widget = QWidget()
+        cu_layout = QHBoxLayout(carbon_unit_widget)
+        cu_layout.setContentsMargins(0, 0, 0, 0)
+        cu_layout.setSpacing(4)
+
+        prefix_lbl = QLabel("kgCO2e /")
+        prefix_lbl.setStyleSheet("font-weight: bold;")
+        cu_layout.addWidget(prefix_lbl)
+
+        # Set this BEFORE the carbon_denom_cb population loop:
+        existing_carbon_unit = v.get("carbon_unit", "kgCO2e/kg")
+        denom = (
+            existing_carbon_unit.split("/")[-1].strip()
+            if "/" in existing_carbon_unit
+            else "kg"
+        )
+
+        self.carbon_denom_cb = QComboBox()
+        self.carbon_denom_cb.setMinimumHeight(30)
+        self.carbon_denom_cb.wheelEvent = lambda event: event.ignore()
+        for category, units in _CONSTRUCTION_UNITS.units.items():
+            for code, info in units.items():
+                print(info)
+                display = f"{info['name'].split(',')[-1].strip()}"
+                print(display)
+                self.carbon_denom_cb.addItem(display, userData=code)
+                idx = self.carbon_denom_cb.count() - 1
+                self.carbon_denom_cb.setItemData(
+                    idx, f"Example: {info['example']}", Qt.ToolTipRole
+                )
+
+        didx = self.carbon_denom_cb.findData(denom)
+        if didx >= 0:
+            self.carbon_denom_cb.setCurrentIndex(didx)
+
+        cu_layout.addWidget(self.carbon_denom_cb, stretch=1)
+
+        self.conv_factor_in = QLineEdit(str(v.get("conversion_factor", "1.0")))
         self.conv_factor_in.setValidator(dbl)
 
         for key, widget in [
             ("carbon_emission", self.carbon_em_in),
-            ("carbon_unit", self.carbon_unit_in),
+            ("carbon_unit", carbon_unit_widget),
             ("conversion_factor", self.conv_factor_in),
         ]:
             cl.addWidget(_field_block(key, widget, self))
@@ -269,7 +318,6 @@ class MaterialDialog(QDialog):
         self.recycling_perc_in = QLineEdit(
             str(v.get("recyclability_percentage", "0.0"))
         )
-
         self.scrap_in.setValidator(dbl)
         self.recycling_perc_in.setValidator(dbl)
 
@@ -296,7 +344,7 @@ class MaterialDialog(QDialog):
 
         root.addStretch()
 
-        # ── Button bar (outside scroll, always visible) ──────────────────
+        # ── Button bar ───────────────────────────────────────────────────
         btn_bar = QWidget()
         btn_bar.setStyleSheet("border-top: 1px solid #ddd;")
         btn_layout = QHBoxLayout(btn_bar)
@@ -324,6 +372,41 @@ class MaterialDialog(QDialog):
         self.carbon_container.setVisible(self.carbon_chk.isChecked())
         self.recycle_container.setVisible(self.recycle_chk.isChecked())
 
+        # ── Auto CF logic ────────────────────────────────────────────────
+        self.unit_in.currentIndexChanged.connect(self._on_unit_changed)
+        self.carbon_denom_cb.currentIndexChanged.connect(self._on_unit_changed)
+
+    # ── Auto CF ─────────────────────────────────────────────────────────
+
+    def _on_unit_changed(self):
+        mat_unit = self.unit_in.currentData() or self.unit_in.currentText()
+        denom = self.carbon_denom_cb.currentData() or self.carbon_denom_cb.currentText()
+        mat_unit = mat_unit.strip().lower()
+        denom = denom.strip().lower()
+
+        if mat_unit == denom:
+            # Same unit — CF must be 1
+            self.conv_factor_in.setText("1.0")
+            self.conv_factor_in.setEnabled(False)
+        else:
+            # Check if both are mass units with known conversion
+            mat_kg = UNIT_TO_KG.get(mat_unit)
+            den_kg = UNIT_TO_KG.get(denom)
+
+            if mat_kg is not None and den_kg is not None:
+                # Auto calculate — e.g. tonne material, kg denom → CF = 1000
+                cf = mat_kg / den_kg
+                self.conv_factor_in.setText(f"{cf:.4g}")
+                self.conv_factor_in.setEnabled(False)
+            else:
+                # Cannot auto-resolve — let user enter
+                self.conv_factor_in.setEnabled(True)
+                # Only prompt if CF is still 1.0 and units differ (likely needs correction)
+                if abs(float(self.conv_factor_in.text() or 1) - 1.0) < 1e-6:
+                    self.conv_factor_in.setStyleSheet("border: 1px solid orange;")
+                else:
+                    self.conv_factor_in.setStyleSheet("")
+
     # ── Validation ───────────────────────────────────────────────────────
 
     def validate_and_accept(self):
@@ -335,7 +418,23 @@ class MaterialDialog(QDialog):
             float(self.rate_in.text() or 0)
             if self.carbon_chk.isChecked():
                 float(self.carbon_em_in.text() or 0)
-                float(self.conv_factor_in.text() or 0)
+                cf = float(self.conv_factor_in.text() or 0)
+
+                # Warn if CF=1 and units differ
+                mat_unit = self.unit_in.currentText().strip().lower()
+                denom = self.carbon_denom_cb.currentText().strip().lower()
+                if mat_unit != denom and abs(cf - 1.0) < 1e-6:
+                    res = QMessageBox.warning(
+                        self,
+                        "Check Conversion Factor",
+                        f"Material unit is '{mat_unit.split("-")[1]}' but carbon unit denominator is '{denom}'.\n"
+                        f"Conversion factor is 1.0 — this may be incorrect.\n\n"
+                        f"Continue anyway?",
+                        QMessageBox.Yes | QMessageBox.No,
+                    )
+                    if res == QMessageBox.No:
+                        return
+
             if self.recycle_chk.isChecked():
                 float(self.scrap_in.text() or 0)
                 float(self.recycling_perc_in.text() or 0)
@@ -353,10 +452,11 @@ class MaterialDialog(QDialog):
             if self.recycle_chk.isChecked()
             else 0.0
         )
+        denom = self.carbon_denom_cb.currentText().strip()
         return {
             "material_name": self.name_in.text().strip(),
             "quantity": float(self.qty_in.text() or 0),
-            "unit": self.unit_in.text().strip(),
+            "unit": self.unit_in.currentData() or self.unit_in.currentText(),
             "rate": float(self.rate_in.text() or 0),
             "rate_source": self.src_in.text().strip(),
             "carbon_emission": (
@@ -364,11 +464,7 @@ class MaterialDialog(QDialog):
                 if self.carbon_chk.isChecked()
                 else 0.0
             ),
-            "carbon_unit": (
-                self.carbon_unit_in.text().strip()
-                if self.carbon_chk.isChecked()
-                else ""
-            ),
+            "carbon_unit": f"kgCO2e/{self.carbon_denom_cb.currentData() or self.carbon_denom_cb.currentText()}",
             "conversion_factor": (
                 float(self.conv_factor_in.text() or 1)
                 if self.carbon_chk.isChecked()
@@ -383,7 +479,6 @@ class MaterialDialog(QDialog):
             "is_recyclable": recycle_pct > 0,
             "grade": self.grade_in.text().strip(),
             "type": self.type_in.text().strip(),
-            # State flags — popped in add_material / open_edit_dialog
             "_included_in_carbon_emission": self.carbon_chk.isChecked(),
             "_included_in_recyclability": self.recycle_chk.isChecked(),
         }

@@ -78,7 +78,9 @@ class StructureTableWidget(QTableWidget):
         self.setItem(row, 1, rate_item)
 
         # 2. Qty
-        qty_item = QTableWidgetItem(str(v.get("quantity", 0)))
+        unit = v.get("unit", "")
+        qty_text = f"{v.get('quantity', 0)} {unit}".strip()
+        qty_item = QTableWidgetItem(qty_text)
         qty_item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
         self.setItem(row, 2, qty_item)
 

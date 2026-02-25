@@ -12,6 +12,8 @@ class ProjectController(QObject):
     fault_occurred = Signal(str)
     dirty_changed = Signal(bool)
     project_loaded = Signal()
+    health_checked = Signal(dict)
+    recovery_suggested = Signal(dict)
 
     def __init__(self):
         super().__init__()
@@ -20,7 +22,6 @@ class ProjectController(QObject):
         self.active_display_name = None
         self.recovery_needed = False
         self.recovery_health = None
-        
 
     def get_chunk(self, chunk_name: str) -> dict:
         """Helper for widgets to retrieve their specific data."""
@@ -59,6 +60,11 @@ class ProjectController(QObject):
                 )
 
             QTimer.singleShot(0, self.project_loaded.emit)
+
+            # ── Start background health check after UI is shown ───────────────
+            if not is_new:
+                QTimer.singleShot(2000, self.run_background_health_check)
+
             return True
 
         return False
@@ -124,6 +130,37 @@ class ProjectController(QObject):
         if self.engine:
             return self.engine.get_health_report()
         return {}
+
+    def run_background_health_check(self):
+        """
+        Starts a background thread to run full health check + orphan cleanup.
+        Never blocks the UI. Emits health_checked when done.
+        """
+        import threading
+
+        def _check():
+            if not self.engine or not self.engine.is_active():
+                return
+            try:
+                # Full health check
+                report = self.engine.assess_health()
+
+                # Orphan cleanup
+                cleaned = self.engine.cleanup_orphans()
+                report["orphans_cleaned"] = cleaned
+
+                # Emit result
+                self.health_checked.emit(report)
+
+                # If issues found that weren't caught on open, suggest recovery
+                if report["needs_recovery"]:
+                    self.recovery_suggested.emit(report)
+
+            except Exception as e:
+                print(f"[DEBUG] Background health check failed: {e}")
+
+        thread = threading.Thread(target=_check, daemon=True)
+        thread.start()
 
 
 # Single instance

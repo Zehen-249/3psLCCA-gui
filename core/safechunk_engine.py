@@ -91,8 +91,8 @@ class SafeChunkEngine:
 
         self._initialize_env()
         self.attach()
-        self._recovery_needed  = False
-        self._recovery_health  = None
+        self._recovery_needed = False
+        self._recovery_health = None
 
     # --------------------------------------------------------------------------
     # FACTORY & ROOT MANAGEMENT
@@ -442,16 +442,17 @@ class SafeChunkEngine:
             self._log(f"Warning: Could not sign manifest: {e}")
 
     def _verify_manifest_signature(self, manifest_data: dict) -> bool:
-        """
-        Returns True if manifest.sig matches current manifest content.
-        Returns True if sig file doesn't exist yet (first open of old project).
-        """
         if not self.sig_file.exists():
-            return True  # no sig yet — old project, trust it
+            return True
         try:
             stored_sig = self.sig_file.read_text().strip()
             expected_sig = self._compute_manifest_hmac(manifest_data)
-            return hmac.compare_digest(stored_sig, expected_sig)
+            result = hmac.compare_digest(stored_sig, expected_sig)
+            if not result:
+                self._tamper_log_append(
+                    "manifest_sig_mismatch", "Manifest HMAC verification failed"
+                )
+            return result
         except Exception:
             return False
 
@@ -649,7 +650,7 @@ class SafeChunkEngine:
                 self._log(f"Lock validation error: {e}")
 
         try:
-            # ── Preserve display_name ─────────────────────────────────────────
+            # ── Read existing version.json ────────────────────────────────────
             existing_version = {}
             if self.version_file.exists():
                 try:
@@ -657,6 +658,7 @@ class SafeChunkEngine:
                 except Exception:
                     pass
 
+            # ── Preserve display_name ─────────────────────────────────────────
             saved_name = existing_version.get("display_name", "").strip()
             if self.display_name and self.display_name != self.project_id:
                 final_name = self.display_name
@@ -672,10 +674,32 @@ class SafeChunkEngine:
             # ── Load or create HMAC key ───────────────────────────────────────
             self._load_or_create_key()
 
+            # ── Mark session as unclean immediately ───────────────────────────
+            # If we crash before detach(), clean_close stays False
+            self.version_file.write_text(
+                json.dumps(
+                    {
+                        **existing_version,
+                        "engine_version": self.VERSION,
+                        "app_version": self.app_version,
+                        "attached_at": time.time(),
+                        "project_id": self.project_id,
+                        "display_name": self.display_name,
+                        "clean_close": False,
+                        "needs_recovery": False,
+                    },
+                    indent=4,
+                )
+            )
+
+            # ── Check if last session was clean ───────────────────────────────
+            last_clean = existing_version.get("clean_close", True)
+
             # ── WAL replay ────────────────────────────────────────────────────
             wal_entries = self._wal_replay()
             if wal_entries:
                 self._session_dirty = True
+                self._log(f"WAL: Replayed {wal_entries} entries from last session.")
 
             # ── Health check ──────────────────────────────────────────────────
             health = self.assess_health()
@@ -689,26 +713,22 @@ class SafeChunkEngine:
                 self.create_ebak(reason="pre_recovery")
                 self._recovery_needed = True
                 self._recovery_health = health
+
+            elif not last_clean and self.wal_file.exists():
+                # Last session didn't close cleanly but no hard corruption
+                # WAL replay already handled it — just log it
+                self._log(
+                    "Last session did not close cleanly. "
+                    f"WAL replayed {wal_entries} entries. Data restored."
+                )
+                self._recovery_needed = False
+                self._recovery_health = None
+
             else:
                 self._recovery_needed = False
                 self._recovery_health = None
 
-            # ── Write version.json ────────────────────────────────────────────
-            self.version_file.write_text(
-                json.dumps(
-                    {
-                        "engine_version": self.VERSION,
-                        "app_version": self.app_version,
-                        "attached_at": time.time(),
-                        "project_id": self.project_id,
-                        "display_name": self.display_name,
-                        "wal_replayed": wal_entries,
-                        "needs_recovery": self._recovery_needed,
-                    },
-                    indent=4,
-                )
-            )
-
+            # ── Declare active ────────────────────────────────────────────────
             self._engine_active = True
             self._log(
                 f"Engine v{self.VERSION} attached to "
@@ -738,16 +758,40 @@ class SafeChunkEngine:
 
         # ── Auto-checkpoint if session had changes ────────────────────────────
         if self._session_dirty:
-            try:
-                self.create_checkpoint(
-                    label="auto_close", notes="Automatic checkpoint on session close."
-                )
-                self._log("Auto-close checkpoint created.")
-            except Exception as e:
-                self._log(f"Auto-close checkpoint failed: {e}")
+            should_checkpoint = True
 
-        # ── Clear WAL (clean close) ───────────────────────────────────────────
+            # Skip if a very recent auto_close checkpoint exists (< 60s ago)
+            recent_autos = sorted(
+                self.checkpoint_path.glob("cp_auto_close_*.zip"),
+                key=os.path.getmtime,
+                reverse=True,
+            )
+            if recent_autos:
+                age = time.time() - os.path.getmtime(recent_autos[0])
+                if age < 60:
+                    should_checkpoint = False
+                    self._log("Auto-close checkpoint skipped — recent one exists.")
+
+            if should_checkpoint:
+                try:
+                    self.create_checkpoint(
+                        label="auto_close",
+                        notes="Automatic checkpoint on session close.",
+                    )
+                    self._log("Auto-close checkpoint created.")
+                except Exception as e:
+                    self._log(f"Auto-close checkpoint failed: {e}")
+
+        # ── Clear WAL ─────────────────────────────────────────────────────────
         self._wal_clear()
+
+        # ── Rotate manifest ring one final time ───────────────────────────────
+        try:
+            if self.manifest_path.exists():
+                manifest = self._load_manifest_with_fallback()
+                self._rotate_manifest_ring(manifest)
+        except Exception as e:
+            self._log(f"Final ring rotation failed: {e}")
 
         # ── Write final version.json ──────────────────────────────────────────
         try:
@@ -756,6 +800,8 @@ class SafeChunkEngine:
                 version_data = json.loads(self.version_file.read_text())
             version_data["display_name"] = self.display_name
             version_data["last_closed"] = time.time()
+            version_data["clean_close"] = True
+            version_data["needs_recovery"] = False
             self.version_file.write_text(json.dumps(version_data, indent=4))
         except Exception as e:
             self._log(f"Warning: Could not update version.json on detach: {e}")
@@ -764,7 +810,7 @@ class SafeChunkEngine:
             self.lock_file.unlink()
 
         self._engine_active = False
-        self._log("Engine detached. Lock released.")
+        self._log("Engine detached cleanly.")
 
     def is_active(self) -> bool:
         return self._engine_active
@@ -940,6 +986,7 @@ class SafeChunkEngine:
     # --------------------------------------------------------------------------
 
     def _trigger_forensics(self, reason: str, offending_path: Optional[Path] = None):
+        """Captures the current state into a forensic snapshot for developer review."""
         ts = time.strftime("%Y%m%d_%H%M%S")
         report_dir = self.forensics_path / f"FAULT_{ts}"
         report_dir.mkdir(parents=True, exist_ok=True)
@@ -954,30 +1001,52 @@ class SafeChunkEngine:
         }
 
         try:
+            # 1. Save JSON fault report
             with open(report_dir / "fault_report.json", "w") as f:
                 json.dump(report, f, indent=4)
 
+            # 2. Preserve manifest state
             if self.manifest_path.exists():
                 shutil.copy2(self.manifest_path, report_dir / "manifest_snapshot.json")
             tmp_manifest = self.manifest_path.with_suffix(".tmp")
             if tmp_manifest.exists():
                 shutil.copy2(tmp_manifest, report_dir / "manifest_partial.tmp")
 
+            # 3. Preserve ring buffer manifests
+            for i in range(1, self.MANIFEST_RING_SIZE + 1):
+                ring = self.project_path / f"manifest_{i}.json"
+                if ring.exists():
+                    shutil.copy2(ring, report_dir / f"manifest_{i}_snapshot.json")
+
+            # 4. Preserve manifest signature
+            if self.sig_file.exists():
+                shutil.copy2(self.sig_file, report_dir / "manifest_snapshot.sig")
+
+            # 5. Preserve offending object
             if offending_path and offending_path.exists():
                 shutil.copy2(
                     offending_path, report_dir / f"offending_data_{offending_path.name}"
                 )
 
+            # 6. Preserve environment context
             if self.lock_file.exists():
                 shutil.copy2(self.lock_file, report_dir / "lock_state.lock")
             if self.version_file.exists():
                 shutil.copy2(self.version_file, report_dir / "version_context.json")
 
-            # Also preserve WAL if it exists
+            # 7. Preserve WAL if exists
             if self.wal_file.exists():
                 shutil.copy2(self.wal_file, report_dir / "wal_snapshot.log")
 
-            self._log(f"Forensic snapshot: forensics/FAULT_{ts}")
+            # 8. Write to tamper log if integrity-related
+            if any(
+                kw in reason
+                for kw in ["INTEGRITY", "MISMATCH", "tamper", "TAMPER", "tampered"]
+            ):
+                self._tamper_log_append("integrity_fault", reason)
+
+            self._log(f"Forensic snapshot saved: forensics/FAULT_{ts}")
+
         except Exception as e:
             self._log(f"Forensics capture failed: {e}")
 
@@ -1666,3 +1735,269 @@ class SafeChunkEngine:
             }
         )
         return result
+
+    def cleanup_orphans(self) -> int:
+        """
+        Removes object files that are not referenced by any manifest chunk.
+        Safe to run in background — read-only on manifest, delete-only on objects.
+        Returns number of orphaned objects removed.
+        """
+        try:
+            # Collect all hashes currently referenced by manifest
+            manifest = self._load_manifest_with_fallback()
+            valid_hashes = set(manifest.get("chunks", {}).values())
+
+            # Also collect hashes from ring buffer manifests
+            for i in range(1, self.MANIFEST_RING_SIZE + 1):
+                ring = self.project_path / f"manifest_{i}.json"
+                if ring.exists():
+                    try:
+                        ring_data = json.loads(ring.read_text())
+                        valid_hashes.update(ring_data.get("chunks", {}).values())
+                    except Exception:
+                        pass
+
+            # Also protect anything in staged data
+            with self._write_lock:
+                for chunk_name, data in self._staged_data.items():
+                    valid_hashes.add(self._get_content_hash(data))
+
+            # Scan object store and remove orphans
+            removed = 0
+            for shard in self.object_store.iterdir():
+                if not shard.is_dir():
+                    continue
+                for obj in shard.glob("*"):
+                    if obj.suffix == ".tmp":
+                        # Remove stale tmp files too
+                        try:
+                            obj.unlink()
+                            removed += 1
+                        except Exception:
+                            pass
+                        continue
+                    if obj.name not in valid_hashes:
+                        try:
+                            obj.unlink()
+                            removed += 1
+                            self._log(f"ORPHAN: Removed {obj.name[:16]}...")
+                        except Exception:
+                            pass
+
+            if removed:
+                self._log(f"Orphan cleanup: removed {removed} unreferenced objects.")
+            return removed
+
+        except Exception as e:
+            self._log(f"Orphan cleanup failed: {e}")
+            return 0
+
+    # --------------------------------------------------------------------------
+    # PHASE 4 — TAMPER LOG
+    # --------------------------------------------------------------------------
+
+    def _tamper_log_append(self, reason: str, details: str = ""):
+        """
+        Appends a tamper detection event to an append-only tamper.log file.
+        Never truncated — permanent audit trail.
+        """
+        try:
+            tamper_log = self.project_path / "tamper.log"
+            entry = json.dumps(
+                {
+                    "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
+                    "unix_ts": time.time(),
+                    "reason": reason,
+                    "details": details,
+                    "project_id": self.project_id,
+                    "engine_ver": self.VERSION,
+                },
+                separators=(",", ":"),
+            )
+            with open(tamper_log, "a", encoding="utf-8") as f:
+                f.write(entry + "\n")
+                f.flush()
+                os.fsync(f.fileno())
+            self._log(f"TAMPER LOG: {reason}")
+        except Exception as e:
+            self._log(f"Tamper log write failed: {e}")
+
+    def read_tamper_log(self) -> list[dict]:
+        """Returns all tamper log entries as a list of dicts."""
+        tamper_log = self.project_path / "tamper.log"
+        if not tamper_log.exists():
+            return []
+        entries = []
+        try:
+            for line in tamper_log.read_text(encoding="utf-8").splitlines():
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    entries.append(json.loads(line))
+                except Exception:
+                    entries.append({"raw": line, "parse_error": True})
+        except Exception as e:
+            self._log(f"Tamper log read failed: {e}")
+        return entries
+
+    # --------------------------------------------------------------------------
+    # PHASE 4 — KEY EXPORT / IMPORT
+    # --------------------------------------------------------------------------
+
+    def export_key(self, destination: str) -> bool:
+        """
+        Exports the project HMAC key to a file.
+        Needed when moving a project to another machine.
+        """
+        try:
+            key = self._load_or_create_key()
+            dest_path = Path(destination)
+            dest_path.write_text(
+                json.dumps(
+                    {
+                        "project_id": self.project_id,
+                        "key": key.hex(),
+                        "exported_at": time.strftime("%Y-%m-%d %H:%M:%S"),
+                        "engine_ver": self.VERSION,
+                    },
+                    indent=4,
+                )
+            )
+            self._log(f"Key exported to: {destination}")
+            return True
+        except Exception as e:
+            self._log(f"Key export failed: {e}")
+            return False
+
+    def import_key(self, source: str) -> bool:
+        """
+        Imports a project HMAC key from a file.
+        Used when receiving a project from another machine.
+        """
+        try:
+            data = json.loads(Path(source).read_text())
+            key_hex = data.get("key", "")
+            if not key_hex:
+                self._log("Key import failed: no key in file.")
+                return False
+            # Validate it's a proper 32-byte hex key
+            key_bytes = bytes.fromhex(key_hex)
+            if len(key_bytes) != 32:
+                self._log("Key import failed: invalid key length.")
+                return False
+            self.key_file.write_text(key_hex)
+            self._log(f"Key imported from: {source}")
+            return True
+        except Exception as e:
+            self._log(f"Key import failed: {e}")
+            return False
+
+    # --------------------------------------------------------------------------
+    # PHASE 4 — FULL VERIFICATION
+    # --------------------------------------------------------------------------
+
+    def verify_full(self) -> dict:
+        """
+        Full project verification — checks everything.
+        Safe to call anytime. Returns detailed report.
+        """
+        report = {
+            "passed": True,
+            "manifest_ok": False,
+            "manifest_signed": False,
+            "manifest_tampered": False,
+            "objects_ok": False,
+            "missing_chunks": [],
+            "tampered_objects": [],
+            "checkpoints_ok": 0,
+            "checkpoints_tampered": 0,
+            "checkpoints_unsigned": 0,
+            "tamper_log_entries": 0,
+            "issues": [],
+        }
+
+        # ── Manifest ──────────────────────────────────────────────────────────
+        if not self.manifest_path.exists():
+            report["issues"].append("manifest.json missing")
+            report["passed"] = False
+        else:
+            try:
+                manifest = json.loads(self.manifest_path.read_text())
+                report["manifest_ok"] = True
+
+                # HMAC check
+                if self.sig_file.exists():
+                    if self._verify_manifest_signature(manifest):
+                        report["manifest_signed"] = True
+                    else:
+                        report["manifest_tampered"] = True
+                        report["passed"] = False
+                        report["issues"].append(
+                            "manifest.json HMAC mismatch — file was modified externally"
+                        )
+                        self._tamper_log_append(
+                            "manifest_tampered",
+                            "HMAC verification failed during full verify",
+                        )
+
+                # Object existence + integrity
+                chunks = manifest.get("chunks", {})
+                for chunk_name, content_hash in chunks.items():
+                    obj_path = self.object_store / content_hash[:2] / content_hash
+                    if not obj_path.exists():
+                        report["missing_chunks"].append(chunk_name)
+                        report["passed"] = False
+                        report["issues"].append(
+                            f"Missing object for chunk: {chunk_name}"
+                        )
+                    else:
+                        # Re-verify object hash
+                        try:
+                            with open(obj_path, "rb") as f:
+                                compressed = f.read()
+                            wrapped = json.loads(
+                                zlib.decompress(compressed).decode("utf-8")
+                            )
+                            actual_hash = self._get_content_hash(wrapped)
+                            if actual_hash != content_hash:
+                                report["tampered_objects"].append(chunk_name)
+                                report["passed"] = False
+                                report["issues"].append(
+                                    f"Object tampered: {chunk_name}"
+                                )
+                                self._tamper_log_append(
+                                    "object_tampered",
+                                    f"Hash mismatch for chunk: {chunk_name}",
+                                )
+                        except Exception as e:
+                            report["issues"].append(
+                                f"Object unreadable: {chunk_name} — {e}"
+                            )
+                            report["passed"] = False
+
+                if not report["missing_chunks"] and not report["tampered_objects"]:
+                    report["objects_ok"] = True
+
+            except Exception as e:
+                report["issues"].append(f"manifest.json unreadable: {e}")
+                report["passed"] = False
+
+        # ── Checkpoints ───────────────────────────────────────────────────────
+        for cp in self.checkpoint_path.glob("*.zip"):
+            sig_path = self.checkpoint_path / f"{cp.name}.sig"
+            if not sig_path.exists():
+                report["checkpoints_unsigned"] += 1
+            elif self.verify_checkpoint(cp.name):
+                report["checkpoints_ok"] += 1
+            else:
+                report["checkpoints_tampered"] += 1
+                report["issues"].append(f"Checkpoint tampered: {cp.name}")
+                self._tamper_log_append(
+                    "checkpoint_tampered", f"HMAC mismatch: {cp.name}"
+                )
+
+        # ── Tamper log ────────────────────────────────────────────────────────
+        report["tamper_log_entries"] = len(self.read_tamper_log())
+
+        return report
