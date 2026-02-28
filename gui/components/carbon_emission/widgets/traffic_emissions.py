@@ -346,6 +346,8 @@ class TrafficEmissions(ScrollableForm):
     def _refresh_total(self):
         self._total_label.setText(f"{self._emissions_table.total_emissions():.4f}")
 
+
+
     def _load_traffic_context(self):
         if not self.controller or not self.controller.engine:
             return
@@ -354,7 +356,27 @@ class TrafficEmissions(ScrollableForm):
         self._emissions_table.set_reroute_distance(reroute)
         self._reroute_label.setText(f"{reroute:.3f} km")
 
-        if reroute == 0.0:
+        self._emissions_table.load_vehicles_from_traffic(
+            traffic.get("vehicle_data", {})
+        )
+
+        # ── Mode sync (must come before warning check) ──
+        traffic_mode = traffic.get("mode", "GLOBAL")
+        print(traffic_mode)
+        mapped = (
+            "Enter Directly"
+            if traffic_mode != "INDIA"
+            else "Calculate by Vehicle"
+        )
+        idx = self.mode.findText(mapped)
+        if idx >= 0:
+            self._suppress_mode_signal = True
+            self.mode.setCurrentIndex(idx)
+            self._stack.setCurrentIndex(idx)
+            self._suppress_mode_signal = False
+
+        # ── Warning (now traffic_mode is defined) ──
+        if reroute == 0.0 and traffic_mode == "INDIA":
             self._warning_label.setText(
                 "⚠ Reroute distance is 0 km — please fill in the Traffic Data tab first."
             )
@@ -362,25 +384,8 @@ class TrafficEmissions(ScrollableForm):
         else:
             self._warning_label.setVisible(False)
 
-        self._emissions_table.load_vehicles_from_traffic(
-            traffic.get("vehicle_data", {})
-        )
-
-        # Sync mode from traffic data
-        traffic_mode = traffic.get("mode", "India")
-        mapped = (
-            "Enter Directly"
-            if traffic_mode == "Outside India"
-            else "Calculate by Vehicle"
-        )
-        idx = self.mode.findText(mapped)
-        if idx >= 0 and self.mode.currentIndex() != idx:
-            self._suppress_mode_signal = True
-            self.mode.setCurrentIndex(idx)
-            self._stack.setCurrentIndex(idx)
-            self._suppress_mode_signal = False
-
         self._refresh_total()
+
 
     # ── Data Collection ───────────────────────────────────────────────────────
 

@@ -117,6 +117,8 @@ _VEHICLES = [
 ]
 _HAS_PWR = {"hcv", "mcv"}
 
+
+BRIDGE_CHUNK = "bridge_data"
 CHUNK = "traffic_and_road_data"
 BASE_DOCS_URL = "https://yourdocs.com/traffic/"
 
@@ -214,7 +216,7 @@ PROJECT_MODE_FIELDS = [
         "Calculation Mode",
         "",
         "combo",
-        options=["India", "Outside India"],
+        options=["INDIA", "GLOBAL"],
     ),
 ]
 
@@ -418,6 +420,10 @@ class TrafficData(ScrollableForm):
         self._suppress_lane_signal = False
         self._build_ui()
 
+    def showEvent(self, event):
+        super().showEvent(event)
+        self._sync_mode_from_country()
+
     def _on_severity_changed(self):
         sender = self.sender()
         minor = self.severity_minor
@@ -586,6 +592,28 @@ class TrafficData(ScrollableForm):
     def _on_peak_count_changed(self, n: int):
         self._peak_table.rebuild(n)
         self._on_field_changed()
+
+    def _sync_mode_from_country(self):
+        if not self.controller or not self.controller.engine:
+            return
+
+        bridge = self.controller.engine.fetch_chunk(BRIDGE_CHUNK) or {}
+        country = bridge.get("location_country", "GLOBAL")
+
+        is_india = country.strip().upper() == "INDIA"
+
+        self.mode.setEnabled(is_india)
+
+        if not is_india:
+            # Empty chunk OR non-India country → force Outside India
+            idx = self.mode.findText("GLOBAL")
+            if idx >= 0:
+                self.mode.blockSignals(True)
+                self.mode.setCurrentIndex(idx)
+                self.mode.blockSignals(False)
+                self._stack.setCurrentIndex(idx)
+        else:
+            self._stack.setCurrentIndex(self.mode.currentIndex())
 
     # ── Data collection ───────────────────────────────────────────────────────
 
