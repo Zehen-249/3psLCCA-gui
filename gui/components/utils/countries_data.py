@@ -20,14 +20,14 @@ data = [
     {
         "COUNTRY": "AMERICAN SAMOA",
         "COUNTRY_CODE": "ASM",
-        "CURRENCY_CODE": "USD / ESP",
-        "NAME_OF_CURRENCY": "Dollar / Peseta",
+        "CURRENCY_CODE": "ESP",
+        "NAME_OF_CURRENCY": "Peseta",
     },
     {
         "COUNTRY": "ANDORRA",
         "COUNTRY_CODE": "AND",
-        "CURRENCY_CODE": "FAF / ADP",
-        "NAME_OF_CURRENCY": "Franc / Peseta",
+        "CURRENCY_CODE": "ADP",
+        "NAME_OF_CURRENCY": "Peseta",
     },
     {
         "COUNTRY": "ANGOLA",
@@ -146,8 +146,8 @@ data = [
     {
         "COUNTRY": "BHUTAN",
         "COUNTRY_CODE": "BTN",
-        "CURRENCY_CODE": "INR / BTN",
-        "NAME_OF_CURRENCY": "Ngultrum / Ind. Rupee",
+        "CURRENCY_CODE": "BTN",
+        "NAME_OF_CURRENCY": "Ngultrum",
     },
     {
         "COUNTRY": "BOLIVIA",
@@ -362,8 +362,8 @@ data = [
     {
         "COUNTRY": "EAST TIMOR",
         "COUNTRY_CODE": "TMP",
-        "CURRENCY_CODE": "TPE / IDR",
-        "NAME_OF_CURRENCY": "Timor Escudo/Indon. Rupiah",
+        "CURRENCY_CODE": "TPE",
+        "NAME_OF_CURRENCY": "Timor Escudo",
     },
     {
         "COUNTRY": "ECUADOR",
@@ -389,12 +389,12 @@ data = [
         "CURRENCY_CODE": "XAF",
         "NAME_OF_CURRENCY": "C.F.A. Franc",
     },
-    {
-        "COUNTRY": "ERITREA",
-        "COUNTRY_CODE": "ERI",
-        "CURRENCY_CODE": "-",
-        "NAME_OF_CURRENCY": "-",
-    },
+    # {
+    #     "COUNTRY": "ERITREA",
+    #     "COUNTRY_CODE": "ERI",
+    #     "CURRENCY_CODE": "-",
+    #     "NAME_OF_CURRENCY": "-",
+    # },
     {
         "COUNTRY": "ESTONIA",
         "COUNTRY_CODE": "EST",
@@ -548,8 +548,8 @@ data = [
     {
         "COUNTRY": "HAITI",
         "COUNTRY_CODE": "HTI",
-        "CURRENCY_CODE": "HTG / USD",
-        "NAME_OF_CURRENCY": "Gourde / Dollar",
+        "CURRENCY_CODE": "HTG",
+        "NAME_OF_CURRENCY": "Gourde",
     },
     {
         "COUNTRY": "HEARD AND MC DONALD ISLANDS",
@@ -692,8 +692,8 @@ data = [
     {
         "COUNTRY": "LATVIA",
         "COUNTRY_CODE": "LVA",
-        "CURRENCY_CODE": "LVL / LVR",
-        "NAME_OF_CURRENCY": "Lat / Latv. Rouble",
+        "CURRENCY_CODE": "LVR",
+        "NAME_OF_CURRENCY": "Latv. Rouble",
     },
     {
         "COUNTRY": "LEBANON",
@@ -704,8 +704,8 @@ data = [
     {
         "COUNTRY": "LESOTHO",
         "COUNTRY_CODE": "LSO",
-        "CURRENCY_CODE": "ZAR / ZAL",
-        "NAME_OF_CURRENCY": "Rand / Loti",
+        "CURRENCY_CODE": "ZAL",
+        "NAME_OF_CURRENCY": "Loti",
     },
     {
         "COUNTRY": "LIBERIA",
@@ -866,8 +866,8 @@ data = [
     {
         "COUNTRY": "NAMIBIA",
         "COUNTRY_CODE": "NAM",
-        "CURRENCY_CODE": "ZAR / NAD",
-        "NAME_OF_CURRENCY": "Rand / Nam. Dollar",
+        "CURRENCY_CODE": "NAD",
+        "NAME_OF_CURRENCY": "Nam. Dollar",
     },
     {
         "COUNTRY": "NAURU",
@@ -968,8 +968,8 @@ data = [
     {
         "COUNTRY": "PANAMA",
         "COUNTRY_CODE": "PAN",
-        "CURRENCY_CODE": "PAB / USD",
-        "NAME_OF_CURRENCY": "Balboa / Dollar",
+        "CURRENCY_CODE": "PAB",
+        "NAME_OF_CURRENCY": "Balboa",
     },
     {
         "COUNTRY": "PAPUA NEW GUINEA",
@@ -1172,8 +1172,8 @@ data = [
     {
         "COUNTRY": "SUDAN",
         "COUNTRY_CODE": "SDN",
-        "CURRENCY_CODE": "SDP / SDD",
-        "NAME_OF_CURRENCY": "Sud. Pound / Dinar",
+        "CURRENCY_CODE": "SDP",
+        "NAME_OF_CURRENCY": "Sud. Pound",
     },
     {
         "COUNTRY": "SURINAME",
@@ -1316,7 +1316,7 @@ data = [
     {
         "COUNTRY": "UNITED STATES",
         "COUNTRY_CODE": "USA",
-        "CURRENCY_CODE": "USD / US$",
+        "CURRENCY_CODE": "USD",
         "NAME_OF_CURRENCY": "Dollar",
     },
     {
@@ -1429,5 +1429,5 @@ data = [
     },
 ]
 
-COUNTRIES = [item["COUNTRY"] for item in data]
-CURRENCIES = [f"{item['CURRENCY_CODE']} - {item['COUNTRY']}" for item in data]
+COUNTRIES = sorted(set(item["COUNTRY"] for item in data))
+CURRENCIES = sorted(set(item["CURRENCY_CODE"] for item in data))

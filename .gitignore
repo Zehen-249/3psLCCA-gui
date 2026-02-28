@@ -1,0 +1,98 @@
+# ─────────────────────────────────────────────
+# User
+# ─────────────────────────────────────────────
+user_folder/
+
+# ─────────────────────────────────────────────
+# Python
+# ─────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.pyd
+*.pyo
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+*.egg
+MANIFEST
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+pytest_cache/
+
+# ─────────────────────────────────────────────
+# Virtual Environments
+# ─────────────────────────────────────────────
+.env
+.venv
+venv/
+ENV/
+env/
+env.bak/
+venv.bak/
+
+# ─────────────────────────────────────────────
+# IDEs
+# ─────────────────────────────────────────────
+# VS Code
+.vscode/
+
+# PyCharm / IntelliJ
+.idea/
+*.iml
+
+# Spyder
+.spyderproject
+.spyproject
+
+# ─────────────────────────────────────────────
+# OS Files
+# ─────────────────────────────────────────────
+# macOS
+.DS_Store
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Linux
+*~
+
+# ─────────────────────────────────────────────
+# Logs
+# ─────────────────────────────────────────────
+*.log
+
+# ─────────────────────────────────────────────
+# PyInstaller
+# ─────────────────────────────────────────────
+*.spec
+
+# ─────────────────────────────────────────────
+# Qt / PySide
+# ─────────────────────────────────────────────
+*.qmlc
+*.jsc
+*.rcc
+*.qrc
+
+# ─────────────────────────────────────────────
+# Local Project Data (optional – adjust if needed)
+# ─────────────────────────────────────────────
+*.sqlite3
+*.db
+*.local.json

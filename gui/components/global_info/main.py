@@ -1,6 +1,6 @@
-"""
-gui/pages/general_info.py
-"""
+# """
+# gui\components\global_info\main.py
+# """
 
 from PySide6.QtWidgets import (
     QComboBox,
@@ -122,15 +122,16 @@ GENERAL_FIELDS = [
         required=True,
         doc_slug="currency",
     ),
-    FieldDef(
-        "unit_system",
-        "Unit System",
-        "Measurement system used throughout the project.",
-        "combo",
-        options=["Metric (SI)", "Imperial (US)"],
-        required=True,
-        doc_slug="unit-system",
-    ),
+    # FieldDef(
+    #     "currency_to_usd_rate",
+    #     "Exchange Rate to USD",
+    #     "Conversion rate from the selected currency to USD (1 unit of selected currency equals X USD).",
+    #     "float",
+    #     options=(0.0001, 1000.0, 6),
+    #     unit="(USD)",
+    #     required=True,
+    #     doc_slug="currency-to-usd-rate",
+    # ),
 ]
 
 
