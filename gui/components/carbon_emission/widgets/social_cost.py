@@ -476,7 +476,7 @@ class SocialCost(ScrollableForm):
             self.scc_value.blockSignals(False)
 
             # Remarks
-            self._remarks.from_html(data.get("remarks", ""))
+            # self._remarks.from_html(data.get("remarks", ""))
 
         finally:
             self._suppress_signals = False
@@ -494,7 +494,7 @@ class SocialCost(ScrollableForm):
         self.ssp_scenario.setCurrentIndex(0)
         self.rcp_scenario.setCurrentIndex(0)
         self.scc_value.setValue(0.0)
-        self._remarks.clear_content()
+        # self._remarks.clear_content()
         self._suppress_signals = False
         self._on_source_mode_changed()
         self._on_field_changed()
