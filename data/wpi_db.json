@@ -8,7 +8,7 @@
                 "year": 2019,
                 "is_custom": false,
                 "remark": "Official WPI index values for 2019",
-                "hash": "sha256:65337d9fd71fc612fa4cbb1a8247f0f28db1f92500402bcdbdf3c9e0bd9089c4"
+                "hash": "sha256:6bc48efcfc6cef5e8d2ceb535be45a65d9db4f0c3ac9ecf338f8ed0ae2d455df"
             },
             "data": {
                 "fuelCost": {
@@ -45,9 +45,9 @@
                         "two_wheelers": 113.2,
                         "o_buses": 113.2,
                         "d_buses": 113.2,
-                        "lcv": 113.2,
-                        "hcv": 113.2,
-                        "mcv": 113.2
+                        "lcv": 114.1,
+                        "hcv": 114.1,
+                        "mcv": 114.1
                     },
                     "fixedDepreciation": {
                         "small_cars": 113.8,
@@ -71,8 +71,8 @@
                     "mcv": 101.7
                 },
                 "passengerCrewCost": {
-                    "passenger": 138.58,
-                    "crew": 118.07
+                    "passenger": 121.2,
+                    "crew": 121.2
                 },
                 "medicalCost": {
                     "fatal": 132.5,
@@ -80,14 +80,14 @@
                     "minor": 132.5
                 },
                 "votCost": {
-                    "small_cars": 138.58,
-                    "big_cars": 138.58,
-                    "two_wheelers": 138.58,
-                    "o_buses": 138.58,
-                    "d_buses": 138.58,
-                    "lcv": 138.58,
-                    "hcv": 138.58,
-                    "mcv": 138.58
+                    "small_cars": 121.2,
+                    "big_cars": 121.2,
+                    "two_wheelers": 121.2,
+                    "o_buses": 121.2,
+                    "d_buses": 121.2,
+                    "lcv": 121.2,
+                    "hcv": 121.2,
+                    "mcv": 121.2
                 }
             }
         },
@@ -98,7 +98,7 @@
                 "year": 2020,
                 "is_custom": false,
                 "remark": "Official WPI index values for 2020",
-                "hash": "sha256:5d1fb804b105597a0dfc76e577932dcb5554ea7a7a00bff031059492afdae6d9"
+                "hash": "sha256:6ec90a93f46a76706344c393ac710e43e89321939f665777a2d393e72f37155a"
             },
             "data": {
                 "fuelCost": {
@@ -135,9 +135,9 @@
                         "two_wheelers": 115.5,
                         "o_buses": 115.5,
                         "d_buses": 115.5,
-                        "lcv": 115.5,
-                        "hcv": 115.5,
-                        "mcv": 115.5
+                        "lcv": 114.2,
+                        "hcv": 114.2,
+                        "mcv": 114.2
                     },
                     "fixedDepreciation": {
                         "small_cars": 116.9,
@@ -161,8 +161,8 @@
                     "mcv": 93.3
                 },
                 "passengerCrewCost": {
-                    "passenger": 147.91,
-                    "crew": 131.77
+                    "passenger": 121.8,
+                    "crew": 121.8
                 },
                 "medicalCost": {
                     "fatal": 135.8,
@@ -170,14 +170,14 @@
                     "minor": 135.8
                 },
                 "votCost": {
-                    "small_cars": 147.91,
-                    "big_cars": 147.91,
-                    "two_wheelers": 147.91,
-                    "o_buses": 147.91,
-                    "d_buses": 147.91,
-                    "lcv": 147.91,
-                    "hcv": 147.91,
-                    "mcv": 147.91
+                    "small_cars": 121.8,
+                    "big_cars": 121.8,
+                    "two_wheelers": 121.8,
+                    "o_buses": 121.8,
+                    "d_buses": 121.8,
+                    "lcv": 121.8,
+                    "hcv": 121.8,
+                    "mcv": 121.8
                 }
             }
         },
@@ -188,7 +188,7 @@
                 "year": 2021,
                 "is_custom": false,
                 "remark": "Official WPI index values for 2021",
-                "hash": "sha256:307b1551d12ec6948a0f8d1f0b5c603dd348e3a0d480200de9996f2d571a6d57"
+                "hash": "sha256:da31f482eb8288469ffbffc8bdda0b90f51acddd38ac6651de63a7b161ead290"
             },
             "data": {
                 "fuelCost": {
@@ -225,9 +225,9 @@
                         "two_wheelers": 120.6,
                         "o_buses": 120.6,
                         "d_buses": 120.6,
-                        "lcv": 120.6,
-                        "hcv": 120.6,
-                        "mcv": 120.6
+                        "lcv": 115.8,
+                        "hcv": 115.8,
+                        "mcv": 115.8
                     },
                     "fixedDepreciation": {
                         "small_cars": 121.1,
@@ -251,8 +251,8 @@
                     "mcv": 116.1
                 },
                 "passengerCrewCost": {
-                    "passenger": 155.33,
-                    "crew": 145.91
+                    "passenger": 135,
+                    "crew": 135
                 },
                 "medicalCost": {
                     "fatal": 139.5,
@@ -260,14 +260,14 @@
                     "minor": 139.5
                 },
                 "votCost": {
-                    "small_cars": 155.33,
-                    "big_cars": 155.33,
-                    "two_wheelers": 155.33,
-                    "o_buses": 155.33,
-                    "d_buses": 155.33,
-                    "lcv": 155.33,
-                    "hcv": 155.33,
-                    "mcv": 155.33
+                    "small_cars": 135,
+                    "big_cars": 135,
+                    "two_wheelers": 135,
+                    "o_buses": 135,
+                    "d_buses": 135,
+                    "lcv": 135,
+                    "hcv": 135,
+                    "mcv": 135
                 }
             }
         },
@@ -278,7 +278,7 @@
                 "year": 2022,
                 "is_custom": false,
                 "remark": "Official WPI index values for 2022",
-                "hash": "sha256:7468878fe2e59037cfb3ce6c1e81e28cdf615295e83e81a1eb03e0ac51607ec4"
+                "hash": "sha256:bfeb0bc185b1a25e7e3a7330c28704356834c029cab7ffd37eb5eb076db14ca5"
             },
             "data": {
                 "fuelCost": {
@@ -315,9 +315,9 @@
                         "two_wheelers": 128.5,
                         "o_buses": 128.5,
                         "d_buses": 128.5,
-                        "lcv": 128.5,
-                        "hcv": 128.5,
-                        "mcv": 128.5
+                        "lcv": 116.7,
+                        "hcv": 116.7,
+                        "mcv": 116.7
                     },
                     "fixedDepreciation": {
                         "small_cars": 127.1,
@@ -341,8 +341,8 @@
                     "mcv": 155.2
                 },
                 "passengerCrewCost": {
-                    "passenger": 166.94,
-                    "crew": 159.05
+                    "passenger": 151.3,
+                    "crew": 151.3
                 },
                 "medicalCost": {
                     "fatal": 140.5,
@@ -350,14 +350,14 @@
                     "minor": 140.5
                 },
                 "votCost": {
-                    "small_cars": 166.94,
-                    "big_cars": 166.94,
-                    "two_wheelers": 166.94,
-                    "o_buses": 166.94,
-                    "d_buses": 166.94,
-                    "lcv": 166.94,
-                    "hcv": 166.94,
-                    "mcv": 166.94
+                    "small_cars": 151.3,
+                    "big_cars": 151.3,
+                    "two_wheelers": 151.3,
+                    "o_buses": 151.3,
+                    "d_buses": 151.3,
+                    "lcv": 151.3,
+                    "hcv": 151.3,
+                    "mcv": 151.3
                 }
             }
         },
@@ -368,7 +368,7 @@
                 "year": 2023,
                 "is_custom": false,
                 "remark": "Official WPI index values for 2023",
-                "hash": "sha256:9ff3c5e27c9f242fe2d9e9084ce83815b10c87f3fe4bf395078b28f090ca47b8"
+                "hash": "sha256:5d61a459f2fc28d7cd117f414087a6bd5b85830f8629b456ab211a9294bc68c6"
             },
             "data": {
                 "fuelCost": {
@@ -405,9 +405,9 @@
                         "two_wheelers": 128.2,
                         "o_buses": 128.2,
                         "d_buses": 128.2,
-                        "lcv": 128.2,
-                        "hcv": 128.2,
-                        "mcv": 128.2
+                        "lcv": 116.7,
+                        "hcv": 116.7,
+                        "mcv": 116.7
                     },
                     "fixedDepreciation": {
                         "small_cars": 128.0,
@@ -431,8 +431,8 @@
                     "mcv": 152.7
                 },
                 "passengerCrewCost": {
-                    "passenger": 176.38,
-                    "crew": 160.28
+                    "passenger": 151.3,
+                    "crew": 151.3
                 },
                 "medicalCost": {
                     "fatal": 142.5,
@@ -440,14 +440,14 @@
                     "minor": 142.5
                 },
                 "votCost": {
-                    "small_cars": 176.38,
-                    "big_cars": 176.38,
-                    "two_wheelers": 176.38,
-                    "o_buses": 176.38,
-                    "d_buses": 176.38,
-                    "lcv": 176.38,
-                    "hcv": 176.38,
-                    "mcv": 176.38
+                    "small_cars": 151.3,
+                    "big_cars": 151.3,
+                    "two_wheelers": 151.3,
+                    "o_buses": 151.3,
+                    "d_buses": 151.3,
+                    "lcv": 151.3,
+                    "hcv": 151.3,
+                    "mcv": 151.3
                 }
             }
         },
@@ -458,7 +458,7 @@
                 "year": 2024,
                 "is_custom": false,
                 "remark": "Official WPI index values for 2024",
-                "hash": "sha256:0e14e68d3a5ed0882eb9428b5ce060797e8b599146d22471b1f0e3a0582e9ba8"
+                "hash": "sha256:0e3c38638a64711dce7e9ac739ad685eba3eacf442b006b2e878165419c66d74"
             },
             "data": {
                 "fuelCost": {
@@ -495,9 +495,9 @@
                         "two_wheelers": 129.0,
                         "o_buses": 129.0,
                         "d_buses": 129.0,
-                        "lcv": 129.0,
-                        "hcv": 129.0,
-                        "mcv": 129.0
+                        "lcv": 116.0,
+                        "hcv": 116.0,
+                        "mcv": 116.0
                     },
                     "fixedDepreciation": {
                         "small_cars": 129.6,
@@ -521,8 +521,8 @@
                     "mcv": 150.4
                 },
                 "passengerCrewCost": {
-                    "passenger": 184.27,
-                    "crew": 164.18
+                    "passenger": 154,
+                    "crew": 154
                 },
                 "medicalCost": {
                     "fatal": 144.0,
@@ -530,14 +530,104 @@
                     "minor": 144.0
                 },
                 "votCost": {
-                    "small_cars": 184.27,
-                    "big_cars": 184.27,
-                    "two_wheelers": 184.27,
-                    "o_buses": 184.27,
-                    "d_buses": 184.27,
-                    "lcv": 184.27,
-                    "hcv": 184.27,
-                    "mcv": 184.27
+                    "small_cars": 154,
+                    "big_cars": 154,
+                    "two_wheelers": 154,
+                    "o_buses": 154,
+                    "d_buses": 154,
+                    "lcv": 154,
+                    "hcv": 154,
+                    "mcv": 154
+                }
+            }
+        },
+        {
+            "metadata": {
+                "id": "wpi_2025",
+                "name": "2025",
+                "year": 2025,
+                "is_custom": false,
+                "remark": "Official WPI index values for 2025",
+                "hash": "sha256:6860b7f2a7f6ec39d5047e8bb282bedebb1ce18918fe84b6435de11c40899d8d"
+            },
+            "data": {
+                "fuelCost": {
+                    "petrol": 146.97,
+                    "diesel": 161.45,
+                    "engine_oil": 190.2,
+                    "other_oil": 150.73,
+                    "grease": 150.73
+                },
+                "vehicleCost": {
+                    "propertyDamage": {
+                        "small_cars": 130.02,
+                        "big_cars": 130.02,
+                        "two_wheelers": 130.02,
+                        "o_buses": 130.02,
+                        "d_buses": 130.02,
+                        "lcv": 130.02,
+                        "hcv": 130.02,
+                        "mcv": 130.02
+                    },
+                    "tyreCost": {
+                        "small_cars": 111.76,
+                        "big_cars": 111.76,
+                        "two_wheelers": 118.58,
+                        "o_buses": 116.28,
+                        "d_buses": 116.28,
+                        "lcv": 116.28,
+                        "hcv": 116.28,
+                        "mcv": 116.28
+                    },
+                    "spareParts": {
+                        "small_cars": 129.19,
+                        "big_cars": 129.19,
+                        "two_wheelers": 129.19,
+                        "o_buses": 145.14,
+                        "d_buses": 145.14,
+                        "lcv": 115.23,
+                        "hcv": 115.23,
+                        "mcv": 115.23
+                    },
+                    "fixedDepreciation": {
+                        "small_cars": 130.46,
+                        "big_cars": 130.46,
+                        "two_wheelers": 130.46,
+                        "o_buses": 130.46,
+                        "d_buses": 130.46,
+                        "lcv": 130.46,
+                        "hcv": 130.46,
+                        "mcv": 130.46
+                    }
+                },
+                "commodityHoldingCost": {
+                    "small_cars": 146.58,
+                    "big_cars": 146.58,
+                    "two_wheelers": 146.58,
+                    "o_buses": 146.58,
+                    "d_buses": 146.58,
+                    "lcv": 146.58,
+                    "hcv": 146.58,
+                    "mcv": 146.58
+                },
+                "passengerCrewCost": {
+                    "passenger": 154.93,
+                    "crew": 154.93
+                },
+                "medicalCost": {
+                    "fatal": 146.48,
+                    "major": 146.48,
+                    "minor": 146.48
+                },
+                "votCost": {
+                    "small_cars": 154.93,
+                    "big_cars": 154.93,
+                    "two_wheelers": 154.93,
+                    "o_buses": 154.93,
+                    "d_buses": 154.93,
+                    "lcv": 154.93,
+                    "hcv": 154.93,
+                    "mcv": 154.93
                 }
             }
         }
