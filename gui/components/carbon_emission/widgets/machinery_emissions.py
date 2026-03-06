@@ -152,10 +152,10 @@ LUMPSUM_ELEC_FIELDS = [
     FieldDef(
         "elec_ef",
         "Emission Factor",
-        "Grid electricity emission factor (kg CO2e per kWh).",
+        "Grid electricity emission factor (kg CO₂e per kWh).",
         "float",
         options=(0.0, 999.0, 4),
-        unit="kg CO2e/kWh",
+        unit="kg CO₂e/kWh",
     ),
 ]
 
@@ -180,10 +180,10 @@ LUMPSUM_FUEL_FIELDS = [
     FieldDef(
         "fuel_ef",
         "Emission Factor",
-        "Diesel emission factor (kg CO2e per litre).",
+        "Diesel emission factor (kg CO₂e per litre).",
         "float",
         options=(0.0, 999.0, 4),
-        unit="kg CO2e/litre",
+        unit="kg CO₂e/litre",
     ),
 ]
 
@@ -343,9 +343,9 @@ class _DetailedTable(QWidget):
         "Fuel / Power Rating",
         "Avg Hrs/Day",
         "No. of Days",
-        "EF (kg CO2e/unit)",
+        "EF (kg CO₂e/unit)",
         "Consumption",
-        "Emissions (kg CO2e)",
+        "Emissions (kg CO₂e)",
         "",
     ]
     _ROW_H = 36
@@ -382,9 +382,9 @@ class _DetailedTable(QWidget):
 
         # Subtotals
         sub_layout = QHBoxLayout()
-        self._lbl_diesel_sub = QLabel("Diesel: 0.00 kg CO2e")
-        self._lbl_elec_sub = QLabel("Electricity: 0.00 kg CO2e")
-        self._lbl_detail_total = QLabel("Subtotal: 0.00 kg CO2e")
+        self._lbl_diesel_sub = QLabel("Diesel: 0.00 kg CO₂e")
+        self._lbl_elec_sub = QLabel("Electricity: 0.00 kg CO₂e")
+        self._lbl_detail_total = QLabel("Subtotal: 0.00 kg CO₂e")
         bold = QFont()
         bold.setBold(True)
         self._lbl_detail_total.setFont(bold)
@@ -523,9 +523,9 @@ class _DetailedTable(QWidget):
             else:
                 elec_total += em
         self._cached_total = diesel_total + elec_total
-        self._lbl_diesel_sub.setText(f"Diesel: {diesel_total:,.2f} kg CO2e")
-        self._lbl_elec_sub.setText(f"Electricity: {elec_total:,.2f} kg CO2e")
-        self._lbl_detail_total.setText(f"Subtotal: {self._cached_total:,.2f} kg CO2e")
+        self._lbl_diesel_sub.setText(f"Diesel: {diesel_total:,.2f} kg CO₂e")
+        self._lbl_elec_sub.setText(f"Electricity: {elec_total:,.2f} kg CO₂e")
+        self._lbl_detail_total.setText(f"Subtotal: {self._cached_total:,.2f} kg CO₂e")
         self._on_change()
 
     def get_total(self) -> float:
@@ -572,7 +572,7 @@ class MachineryEmissions(ScrollableForm):
         banner = QGroupBox()
         banner_layout = QHBoxLayout(banner)
         banner_layout.setContentsMargins(12, 8, 12, 8)
-        self._lbl_grand_total = QLabel("Total Machinery Emissions: — kg CO2e")
+        self._lbl_grand_total = QLabel("Total Machinery Emissions: — kg CO₂e")
         self._lbl_grand_total.setFont(bold)
         note = QLabel(
             "  ⓘ  Fill either Detailed Equipment List or Lump Sum — not both."
@@ -672,7 +672,7 @@ class MachineryEmissions(ScrollableForm):
         ls_total_row = QWidget()
         ls_total_layout = QHBoxLayout(ls_total_row)
         ls_total_layout.setContentsMargins(0, 8, 0, 4)
-        self._lbl_lumpsum_total = QLabel("Lump Sum Subtotal: 0.00 kg CO2e")
+        self._lbl_lumpsum_total = QLabel("Lump Sum Subtotal: 0.00 kg CO₂e")
         bold2 = QFont()
         bold2.setBold(True)
         self._lbl_lumpsum_total.setFont(bold2)
@@ -688,7 +688,7 @@ class MachineryEmissions(ScrollableForm):
         bottom_banner = QGroupBox()
         bottom_layout = QHBoxLayout(bottom_banner)
         bottom_layout.setContentsMargins(12, 8, 12, 8)
-        self._lbl_grand_total_bottom = QLabel("Total Machinery Emissions: — kg CO2e")
+        self._lbl_grand_total_bottom = QLabel("Total Machinery Emissions: — kg CO₂e")
         self._lbl_grand_total_bottom.setFont(bold)
         bottom_layout.addStretch()
         bottom_layout.addWidget(self._lbl_grand_total_bottom)
@@ -758,9 +758,9 @@ class MachineryEmissions(ScrollableForm):
             self._shrink_stack_to_current()
         else:
             total = self._lumpsum_elec_total() + self._lumpsum_fuel_total()
-            self._lbl_lumpsum_total.setText(f"Lump Sum Subtotal: {total:,.2f} kg CO2e")
+            self._lbl_lumpsum_total.setText(f"Lump Sum Subtotal: {total:,.2f} kg CO₂e")
 
-        text = f"Total Machinery Emissions: {total:,.2f} kg CO2e"
+        text = f"Total Machinery Emissions: {total:,.2f} kg CO₂e"
         self._lbl_grand_total.setText(text)
         self._lbl_grand_total_bottom.setText(text)
         self._on_field_changed()
@@ -770,9 +770,9 @@ class MachineryEmissions(ScrollableForm):
     def _apply_currency(self):
         currency = self._get_currency()
         note = f" (Currency: {currency})" if currency else ""
-        self._lbl_grand_total.setToolTip(f"Total CO2e emissions from machinery{note}")
+        self._lbl_grand_total.setToolTip(f"Total CO₂e emissions from machinery{note}")
         self._lbl_grand_total_bottom.setToolTip(
-            f"Total CO2e emissions from machinery{note}"
+            f"Total CO₂e emissions from machinery{note}"
         )
 
     def _on_chunk_updated(self, chunk_name: str):

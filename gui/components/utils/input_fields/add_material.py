@@ -37,7 +37,7 @@ FIELD_DEFINITIONS = {
         "label": "Emission Factor",
         "explanation": (
             "Carbon emission factor from a standard reference (e.g. IFC, IPCC, ICE Database), "
-            "expressed in kgCO2e per Unit B. Example: 0.159 kgCO2e/kg for ready-mix concrete."
+            "expressed in kgCO₂e per Unit B. Example: 0.159 kgCO₂e/kg for ready-mix concrete."
         ),
         "doc_slug": "emission-factor",
         "required": False,
@@ -46,7 +46,7 @@ FIELD_DEFINITIONS = {
         "label": "Carbon Unit",
         "explanation": (
             "Unit in which the emission factor is expressed, taken from the standard reference. "
-            "Format: kgCO2e/<unit> — e.g. kgCO2e/kg, kgCO2e/m3."
+            "Format: kgCO₂e/<unit> — e.g. kgCO₂e/kg, kgCO₂e/m3."
         ),
         "doc_slug": "carbon-unit",
         "required": False,

@@ -25,22 +25,13 @@ from PySide6.QtWidgets import (
     QAbstractItemView,
 )
 from PySide6.QtCore import Qt, QSize
-from PySide6.QtGui import QDoubleValidator, QColor, QFont
+from PySide6.QtGui import QColor, QFont, QDoubleValidator
 
-# Assuming these utilities are available in your project structure
-# from ...utils.definitions import DEFAULT_VEHICLES
-# from ...utils.unit_resolver import analyze_conversion_sympy
+from ...utils.definitions import STRUCTURE_CHUNKS, UNIT_DIMENSION
 
 # ---------------------------------------------------------------------------
 # Constants & Styling
 # ---------------------------------------------------------------------------
-
-STRUCTURE_CHUNKS = [
-    ("str_foundation", "Foundation"),
-    ("str_sub_structure", "Sub Structure"),
-    ("str_super_structure", "Super Structure"),
-    ("str_misc", "Misc"),
-]
 
 # Row background states
 BG_INVALID = "#fff1f0"  # Light Red (Error)
@@ -149,7 +140,7 @@ class VehicleRouteStep(QWidget):
         )
 
         self.ef_in = self._create_labeled_spin(
-            v_grid, "Emission Factor (kgCO2e/t-km) *", 0, 10, 6, 3, 0, default=0.055
+            v_grid, "Emission Factor (kgCO₂e/t-km) *", 0, 10, 6, 3, 0, default=0.055
         )
 
         layout.addLayout(v_grid)
@@ -329,7 +320,7 @@ class MaterialSelectionStep(QWidget):
         "Material",
         "Qty",
         "Unit",
-        "kg Factor",
+        "kg / unit",
         "Qty (kg)",
         "Status",
     ]
@@ -431,9 +422,30 @@ class MaterialSelectionStep(QWidget):
                     v = item.get("values", {})
                     unit = v.get("unit", "")
                     qty = float(v.get("quantity", 0) or 0)
+                    stored_usi = v.get("unit_to_si")
+                    dimension = UNIT_DIMENSION.get(unit.lower())
+                    is_mass = dimension == "Mass"
 
-                    kg_factor = self.saved_kg_factors.get(mat_uuid, 1.0)
-                    is_suspicious = abs(kg_factor - 1.0) < 1e-6 and unit.lower() != "kg"
+                    if mat_uuid in self.saved_kg_factors:
+                        # Editing existing entry — use saved value
+                        kg_factor = self.saved_kg_factors[mat_uuid]
+                        factor_known = True
+                    elif is_mass and stored_usi is not None:
+                        # Mass units: unit_to_si IS the kg conversion (SI base for mass = kg)
+                        kg_factor = float(stored_usi)
+                        factor_known = True
+                    else:
+                        # Volume / Area / Length / Count / unknown:
+                        # user must supply density (kg per unit) — cannot auto-calculate
+                        kg_factor = 0.0
+                        factor_known = False
+
+                    # Warn only when a non-mass editable factor is typed as 1.0
+                    is_suspicious = (
+                        not is_mass
+                        and factor_known
+                        and abs(kg_factor - 1.0) < 1e-6
+                    )
                     is_assigned = mat_uuid in self.assigned_uuids
 
                     row = self.table.rowCount()
@@ -474,21 +486,33 @@ class MaterialSelectionStep(QWidget):
                     qty_item.setData(Qt.UserRole, qty)
                     self.table.setItem(row, 3, qty_item)
 
-                    # Col 4: Unit
-                    self.table.setItem(row, 4, self._item(unit))
+                    # Col 4: Unit — use Unicode symbols
+                    _unit_display = {"m2": "m²", "m3": "m³", "sqft": "sq.ft", "sqyd": "sq.yd"}
+                    self.table.setItem(row, 4, self._item(_unit_display.get(unit.lower(), unit)))
 
-                    # Col 5: kg Factor (LineEdit)
-                    kg_edit = QLineEdit(str(kg_factor))
-                    kg_edit.setValidator(QDoubleValidator(0, 1e9, 4))
-                    kg_edit.setMinimumHeight(28)
-                    kg_edit.textChanged.connect(
-                        lambda t, r=row, q=qty: self._on_factor_changed(t, r, q)
-                    )
-
-                    factor_sort = self._item()
-                    factor_sort.setData(Qt.UserRole, kg_factor)
-                    self.table.setItem(row, 5, factor_sort)
-                    self.table.setCellWidget(row, 5, kg_edit)
+                    # Col 5: kg/unit — read-only for mass units, editable for others
+                    if factor_known and is_mass:
+                        # Auto-calculated from unit definition — lock it
+                        factor_display = f"{kg_factor:g}" if kg_factor > 0 else ""
+                        factor_item = self._item(factor_display, Qt.AlignRight | Qt.AlignVCenter)
+                        factor_item.setData(Qt.UserRole, kg_factor)
+                        self.table.setItem(row, 5, factor_item)
+                    else:
+                        # Non-mass unit: user must supply density (kg per unit of material)
+                        saved_val = self.saved_kg_factors.get(mat_uuid, 0.0)
+                        init_text = "" if saved_val <= 0 else f"{saved_val:g}"
+                        ph = "kg per unit (e.g. 2400 for concrete m³)"
+                        kg_edit = QLineEdit(init_text)
+                        kg_edit.setPlaceholderText(ph)
+                        kg_edit.setValidator(QDoubleValidator(0, 1e9, 4))
+                        kg_edit.setMinimumHeight(28)
+                        kg_edit.textChanged.connect(
+                            lambda t, r=row, q=qty: self._on_factor_changed(t, r, q)
+                        )
+                        factor_sort = self._item()
+                        factor_sort.setData(Qt.UserRole, saved_val)
+                        self.table.setItem(row, 5, factor_sort)
+                        self.table.setCellWidget(row, 5, kg_edit)
 
                     # Col 6: Total (kg)
                     tot_item = self._item(
@@ -500,9 +524,11 @@ class MaterialSelectionStep(QWidget):
                     # Col 7: Status
                     self.table.setItem(row, 7, self._item("", Qt.AlignCenter))
 
-                    self._rows_metadata.append(
-                        {"uuid": mat_uuid, "unit": unit, "qty": qty}
-                    )
+                    self._rows_metadata.append({
+                        "uuid": mat_uuid, "unit": unit, "qty": qty,
+                        "unit_to_si": stored_usi,
+                        "chunk_id": chunk_id, "comp_name": comp_name,
+                    })
 
                     # Row color state
                     if is_assigned:
@@ -516,16 +542,15 @@ class MaterialSelectionStep(QWidget):
     def _on_factor_changed(self, text, row, qty):
         try:
             val = float(text or 0)
-            # Live calculate col 6
-            self.table.item(row, 6).setText(f"{qty * val:,.0f} kg")
             self.table.item(row, 6).setData(Qt.UserRole, qty * val)
-
-            # Check suspicious (1.0 warning)
-            unit = self._rows_metadata[row]["unit"]
-            is_sus = abs(val - 1.0) < 1e-6 and unit.lower() != "kg"
+            self.table.item(row, 5).setData(Qt.UserRole, val)
+            meta = self._rows_metadata[row]
+            unit = meta["unit"]
+            is_mass = UNIT_DIMENSION.get(unit.lower()) == "Mass"
+            is_sus = not is_mass and abs(val - 1.0) < 1e-6
             self._update_row_status(row, val, is_sus)
             self.update_weight_counter()
-        except:
+        except Exception:
             pass
 
     def _update_row_status(self, row, factor, is_sus):
@@ -587,11 +612,10 @@ class MaterialSelectionStep(QWidget):
             meta = next(
                 (r for r in self._rows_metadata if r["uuid"] == m["uuid"]), None
             )
-            if (
-                meta
-                and abs(m["kg_factor"] - 1.0) < 1e-6
-                and meta["unit"].lower() != "kg"
-            ):
+            if not meta:
+                continue
+            is_mass = UNIT_DIMENSION.get(meta["unit"].lower()) == "Mass"
+            if not is_mass and abs(m["kg_factor"] - 1.0) < 1e-6:
                 has_warnings = True
                 break
 
@@ -616,7 +640,10 @@ class MaterialSelectionStep(QWidget):
             chk = chk_w.findChild(QCheckBox)
             if chk and chk.isChecked():
                 kg_edit = self.table.cellWidget(row, 5)
-                factor = float(kg_edit.text() or 0)
+                if kg_edit:
+                    factor = float(kg_edit.text() or 0)
+                else:
+                    factor = self.table.item(row, 5).data(Qt.UserRole) or 0.0
                 results.append(
                     {"uuid": self._rows_metadata[row]["uuid"], "kg_factor": factor}
                 )

@@ -104,6 +104,65 @@ _CONSTRUCTION_UNITS = ConstructionUnits()
 UNIT_DROPDOWN_DATA = _CONSTRUCTION_UNITS.get_dropdown_data()
 
 
+# ---------------------------------------------------------------------------
+# SI unit system for the Add Material dialog
+# ---------------------------------------------------------------------------
+
+# Maps unit code → how many SI base units it equals
+# (e.g. tonne → 1000.0 means 1 tonne = 1000 kg)
+UNIT_TO_SI = {
+    # Mass (SI base: kg)
+    "kg":    1.0,
+    "tonne": 1000.0,
+    "mt":    1000.0,
+    "q":     100.0,
+    # Length (SI base: m)
+    "m":     1.0,
+    "rm":    1.0,
+    "ft":    0.3048,
+    # Area (SI base: m²)
+    "m2":    1.0,
+    "sqm":   1.0,
+    "sqft":  0.09290304,
+    "sqyd":  0.83612736,
+    # Volume (SI base: m³)
+    "m3":    1.0,
+    "cum":   1.0,
+    "cft":   0.028316846,
+    # Count (dimensionless, base: nos)
+    "nos":   1.0,
+    "pcs":   1.0,
+    "set":   1.0,
+    "ls":    1.0,
+}
+
+# Maps unit code → its physical dimension
+UNIT_DIMENSION = {
+    "kg":    "Mass",   "tonne": "Mass",   "mt":    "Mass",   "q":     "Mass",
+    "m":     "Length", "rm":    "Length", "ft":    "Length",
+    "m2":    "Area",   "sqm":   "Area",   "sqft":  "Area",   "sqyd":  "Area",
+    "m3":    "Volume", "cum":   "Volume", "cft":   "Volume",
+    "nos":   "Count",  "pcs":   "Count",  "set":   "Count",  "ls":    "Count",
+}
+
+# Maps dimension name → its SI base unit code
+SI_BASE_UNITS = {
+    "Mass":   "kg",
+    "Length": "m",
+    "Area":   "m2",
+    "Volume": "m3",
+    "Count":  "nos",
+}
+
+
+STRUCTURE_CHUNKS = [
+    ("str_foundation", "Foundation"),
+    ("str_sub_structure", "Sub Structure"),
+    ("str_super_structure", "Super Structure"),
+    ("str_misc", "Misc"),
+]
+
+
 DEFAULT_VEHICLES = {
     "Small Truck (5T)": {
         "name": "Small Truck (5T)",

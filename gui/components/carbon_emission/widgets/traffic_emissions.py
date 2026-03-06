@@ -57,7 +57,7 @@ DIRECT_FIELDS = [
         "Enter the total carbon emissions from traffic diversion directly.",
         "float",
         (0.0, 1e12, 4),
-        unit="kgCO2e",
+        unit="kgCO₂e",
     ),
 ]
 
@@ -88,8 +88,8 @@ class _EmissionsTable(QTableWidget):
             [
                 "Vehicle Type",
                 "Vehicles / Day",
-                "Emission Factor\n(kgCO2e/veh-km/day)",
-                "Emissions\n(kgCO2e/day)",
+                "Emission Factor\n(kgCO₂e/veh-km/day)",
+                "Emissions\n(kgCO₂e/day)",
             ]
         )
         self.horizontalHeader().setSectionResizeMode(QHeaderView.Interactive)
@@ -296,7 +296,7 @@ class TrafficEmissions(ScrollableForm):
         calc_layout.addRow(table_container)
 
         self._total_label = QLabel("0.0000")
-        calc_layout.addRow("<b>Total Emissions (kgCO2e/day):</b>", self._total_label)
+        calc_layout.addRow("<b>Total Emissions (kgCO₂e/day):</b>", self._total_label)
 
         btn_defaults = QPushButton("Load Default Factors")
         btn_defaults.setFixedWidth(160)

@@ -7,19 +7,35 @@ from PySide6.QtWidgets import (
     QTableWidget,
     QTableWidgetItem,
     QHeaderView,
-    QDialog,
-    QLineEdit,
-    QMessageBox,
     QFrame,
     QSizePolicy,
     QScrollArea,
 )
-from PySide6.QtCore import Qt, QSize, QTimer, QUrl
-from PySide6.QtGui import QDoubleValidator, QDesktopServices, QColor
+from PySide6.QtCore import Qt, QSize, QTimer
+from PySide6.QtGui import QColor
 import datetime
 
-from ...utils.input_fields.add_material import FIELD_DEFINITIONS, BASE_DOCS_URL
 from ...utils.unit_resolver import analyze_conversion_sympy
+
+_UNIT_DISPLAY = {
+    "m2": "m²", "m3": "m³", "sqm": "m²", "cum": "m³",
+    "sqft": "sq.ft", "sqyd": "sq.yd",
+}
+
+
+def _fmt_unit(code: str) -> str:
+    """Convert raw unit code to display symbol."""
+    return _UNIT_DISPLAY.get(code.lower(), code) if code else code
+
+
+def _fmt_carbon_unit(carbon_unit: str) -> str:
+    """Normalize stored carbon_unit: fix CO2e subscript and unit symbols."""
+    unit = carbon_unit.replace("CO2e", "CO₂e")
+    if "/" in unit:
+        prefix, denom = unit.rsplit("/", 1)
+        return f"{prefix}/{_fmt_unit(denom.strip())}"
+    return unit
+
 
 # Cache for expensive SymPy analysis — keyed by (unit, carbon_denom, conv_factor)
 _analysis_cache: dict = {}
@@ -79,130 +95,6 @@ def calc_carbon(item: dict) -> float:
 
 
 # ---------------------------------------------------------------------------
-# Mini Fix Dialog
-# ---------------------------------------------------------------------------
-
-
-class CarbonFixDialog(QDialog):
-    def __init__(self, item: dict, parent=None):
-        super().__init__(parent)
-        self.setWindowTitle("Fix Carbon Data")
-        self.setMinimumWidth(400)
-        self.setWindowFlags(self.windowFlags() & ~Qt.WindowContextHelpButtonHint)
-
-        v = item.get("values", {})
-        layout = QVBoxLayout(self)
-        layout.setSpacing(10)
-
-        name = v.get("material_name", "Material")
-        header = QLabel(f"<b>{name}</b>")
-        layout.addWidget(header)
-
-        line = QFrame()
-        line.setFrameShape(QFrame.HLine)
-        line.setFrameShadow(QFrame.Sunken)
-        layout.addWidget(line)
-
-        dbl = QDoubleValidator()
-        dbl.setNotation(QDoubleValidator.StandardNotation)
-
-        layout.addWidget(self._field_label("carbon_emission"))
-        self.emission_in = QLineEdit(str(v.get("carbon_emission", "0.0")))
-        self.emission_in.setValidator(dbl)
-        self.emission_in.setMinimumHeight(30)
-        layout.addWidget(self._field_row(self.emission_in, "carbon_emission"))
-
-        layout.addWidget(self._field_label("carbon_unit"))
-        self.unit_in = QLineEdit(v.get("carbon_unit", "kgCO2e/kg"))
-        self.unit_in.setMinimumHeight(30)
-        layout.addWidget(self._field_row(self.unit_in, "carbon_unit"))
-
-        layout.addWidget(self._field_label("conversion_factor"))
-        self.conv_in = QLineEdit(str(v.get("conversion_factor", "1.0")))
-        self.conv_in.setValidator(dbl)
-        self.conv_in.setMinimumHeight(30)
-        layout.addWidget(self._field_row(self.conv_in, "conversion_factor"))
-
-        line2 = QFrame()
-        line2.setFrameShape(QFrame.HLine)
-        line2.setFrameShadow(QFrame.Sunken)
-        layout.addWidget(line2)
-
-        btn_row = QHBoxLayout()
-        save_btn = QPushButton("Save & Include")
-        save_btn.setMinimumHeight(32)
-        save_btn.clicked.connect(self.validate_and_accept)
-
-        cancel_btn = QPushButton("Cancel")
-        cancel_btn.setMinimumHeight(32)
-        cancel_btn.clicked.connect(self.reject)
-
-        btn_row.addWidget(save_btn)
-        btn_row.addWidget(cancel_btn)
-        layout.addLayout(btn_row)
-
-    def _field_label(self, key: str) -> QLabel:
-        defn = FIELD_DEFINITIONS.get(key, {})
-        lbl = QLabel(defn.get("label", key))
-        lbl.setStyleSheet("font-weight: 600; font-size: 12px;")
-        return lbl
-
-    def _field_row(self, input_widget: QWidget, key: str) -> QWidget:
-        container = QWidget()
-        row = QHBoxLayout(container)
-        row.setContentsMargins(0, 0, 0, 0)
-        row.setSpacing(6)
-        row.addWidget(input_widget)
-
-        info_btn = QPushButton("ⓘ")
-        info_btn.setFixedSize(22, 22)
-        info_btn.setFlat(True)
-        info_btn.setFocusPolicy(Qt.NoFocus)
-        info_btn.setCursor(Qt.PointingHandCursor)
-        info_btn.clicked.connect(lambda: self._show_info(key))
-        row.addWidget(info_btn)
-        return container
-
-    def _show_info(self, key: str):
-        defn = FIELD_DEFINITIONS.get(key, {})
-        msg = QMessageBox(self)
-        msg.setWindowTitle(defn.get("label", key))
-        msg.setText(defn.get("explanation", "No description available."))
-        slug = defn.get("doc_slug", "")
-        if slug:
-            read_more = msg.addButton("Read More →", QMessageBox.HelpRole)
-            read_more.clicked.connect(
-                lambda: QDesktopServices.openUrl(QUrl(f"{BASE_DOCS_URL}{slug}"))
-            )
-        msg.addButton(QMessageBox.Close)
-        msg.exec()
-
-    def validate_and_accept(self):
-        try:
-            e = float(self.emission_in.text() or 0)
-            c = float(self.conv_in.text() or 0)
-            if e == 0 or c == 0:
-                QMessageBox.warning(
-                    self,
-                    "Incomplete",
-                    "Emission Factor and Conversion Factor cannot be zero.",
-                )
-                return
-            self.accept()
-        except ValueError:
-            QMessageBox.critical(
-                self, "Validation Error", "Please enter valid numbers."
-            )
-
-    def get_values(self) -> dict:
-        return {
-            "carbon_emission": float(self.emission_in.text() or 0),
-            "carbon_unit": self.unit_in.text().strip(),
-            "conversion_factor": float(self.conv_in.text() or 1),
-        }
-
-
-# ---------------------------------------------------------------------------
 # Carbon Table Widget
 # ---------------------------------------------------------------------------
 
@@ -214,7 +106,7 @@ class CarbonTable(QTableWidget):
         "Qty (unit)",
         "Conv. Factor",
         "Emission",
-        "Total kgCO2e",
+        "Total kgCO₂e",
         "Warning",
         "Action",
     ]
@@ -247,9 +139,9 @@ class CarbonTable(QTableWidget):
 
     def _set_column_widths(self):
         widths = (
-            [110, 180, 80, 90, 110, 100, 70, 80]
+            [110, 180, 80, 90, 110, 100, 70, 160]
             if self.is_included
-            else [110, 160, 80, 90, 110, 100, 90, 90]
+            else [110, 160, 80, 90, 110, 100, 90, 160]
         )
         for i, w in enumerate(widths):
             self.setColumnWidth(i, w)
@@ -314,7 +206,7 @@ class MaterialEmissions(QWidget):
         # Summary Bar
         self.summary_bar = QWidget()
         summary_layout = QHBoxLayout(self.summary_bar)
-        self.total_lbl = QLabel("Total: — kgCO2e")
+        self.total_lbl = QLabel("Total: - kgCO₂e")
         self.count_lbl = QLabel("Included: — of — items")
         self.details_btn = QPushButton("Show Details ▼")
         self.details_btn.setFlat(True)
@@ -450,14 +342,14 @@ class MaterialEmissions(QWidget):
             t.setItem(row, 0, QTableWidgetItem(category))
             t.setItem(row, 1, QTableWidgetItem(v.get("material_name", "")))
             t.setItem(
-                row, 2, QTableWidgetItem(f"{v.get('quantity', 0)} {v.get('unit', '')}")
+                row, 2, QTableWidgetItem(f"{v.get('quantity', 0)} {_fmt_unit(v.get('unit', ''))}")
             )
             t.setItem(row, 3, QTableWidgetItem(str(v.get("conversion_factor", 1))))
             t.setItem(
                 row,
                 4,
                 QTableWidgetItem(
-                    f"{v.get('carbon_emission', 0)} {v.get('carbon_unit', '')}"
+                    f"{v.get('carbon_emission', 0)} {_fmt_carbon_unit(v.get('carbon_unit', ''))}"
                 ),
             )
 
@@ -474,15 +366,15 @@ class MaterialEmissions(QWidget):
 
             t.setItem(row, 6, QTableWidgetItem(", ".join(warnings)))
 
-            btn = QPushButton("Exclude")
-            btn.clicked.connect(
-                lambda _, ci=chunk_id, cn=comp_name, i=idx: self._toggle_inclusion(
-                    ci, cn, i, False
-                )
+            edit_btn = QPushButton("Edit EF")
+            edit_btn.clicked.connect(
+                lambda _, ci=chunk_id, cn=comp_name, i=idx, it=item: self._open_emission_edit(ci, cn, i, it)
             )
-            t.setCellWidget(row, 7, btn)
-
-            # t.set_row_style(row, "#ffffff")
+            excl_btn = QPushButton("Exclude")
+            excl_btn.clicked.connect(
+                lambda _, ci=chunk_id, cn=comp_name, i=idx: self._toggle_inclusion(ci, cn, i, False)
+            )
+            t.setCellWidget(row, 7, self._btn_container(edit_btn, excl_btn))
 
         t.update_height()
         t.setUpdatesEnabled(True)
@@ -499,14 +391,14 @@ class MaterialEmissions(QWidget):
             t.setItem(row, 0, QTableWidgetItem(category))
             t.setItem(row, 1, QTableWidgetItem(v.get("material_name", "")))
             t.setItem(
-                row, 2, QTableWidgetItem(f"{v.get('quantity', 0)} {v.get('unit', '')}")
+                row, 2, QTableWidgetItem(f"{v.get('quantity', 0)} {_fmt_unit(v.get('unit', ''))}")
             )
             t.setItem(row, 3, QTableWidgetItem(str(v.get("conversion_factor", 1))))
             t.setItem(
                 row,
                 4,
                 QTableWidgetItem(
-                    f"{v.get('carbon_emission', 0)} {v.get('carbon_unit', '')}"
+                    f"{v.get('carbon_emission', 0)} {_fmt_carbon_unit(v.get('carbon_unit', ''))}"
                 ),
             )
             t.setItem(row, 5, QTableWidgetItem(reason))
@@ -514,36 +406,29 @@ class MaterialEmissions(QWidget):
             warn_text = "! Factor" if reason == "Suspicious Data" else ""
             t.setItem(row, 6, QTableWidgetItem(warn_text))
 
-            # Action Button: If item needs fixing (Missing or Suspicious), show 'Fix' button.
-            # If item is valid but excluded, show 'Include' button.
+            edit_btn = QPushButton("Edit EF")
+            edit_btn.clicked.connect(
+                lambda _, ci=chunk_id, cn=comp_name, i=idx, it=item: self._open_emission_edit(ci, cn, i, it)
+            )
+
             if reason in ["Missing Data", "Suspicious Data"]:
-                btn = QPushButton("Fix")
-                btn.setStyleSheet("background-color: #f39c12; color: white;")
-                btn.clicked.connect(
-                    lambda _, ci=chunk_id, cn=comp_name, i=idx, it=item: self._open_fix_dialog(
-                        ci, cn, i, it
-                    )
-                )
                 t.set_row_style(
                     row, BG_INVALID if reason == "Missing Data" else BG_SUSPICIOUS
                 )
+                t.setCellWidget(row, 7, self._btn_container(edit_btn))
             else:
-                btn = QPushButton("Include")
-                btn.clicked.connect(
-                    lambda _, ci=chunk_id, cn=comp_name, i=idx: self._toggle_inclusion(
-                        ci, cn, i, True
-                    )
+                incl_btn = QPushButton("Include")
+                incl_btn.clicked.connect(
+                    lambda _, ci=chunk_id, cn=comp_name, i=idx: self._toggle_inclusion(ci, cn, i, True)
                 )
-                # t.set_row_style(row, "#ffffff")
-
-            t.setCellWidget(row, 7, btn)
+                t.setCellWidget(row, 7, self._btn_container(edit_btn, incl_btn))
         t.update_height()
         t.setUpdatesEnabled(True)
 
     def _update_summary(
         self, total: float, included: int, total_count: int, cat_totals: dict
     ):
-        self.total_lbl.setText(f"Total: {total:,.2f} kgCO2e")
+        self.total_lbl.setText(f"Total: {total:,.2f} kgCO₂e")
         self.count_lbl.setText(f"Included: {included} of {total_count} items")
         self.foundation_lbl.setText(
             f"Foundation: {cat_totals.get('Foundation', 0):,.2f}"
@@ -568,18 +453,31 @@ class MaterialEmissions(QWidget):
             self._mark_dirty()
             QTimer.singleShot(0, self.on_refresh)
 
-    def _open_fix_dialog(
+    def _btn_container(self, *buttons) -> QWidget:
+        w = QWidget()
+        h = QHBoxLayout(w)
+        h.setContentsMargins(2, 2, 2, 2)
+        h.setSpacing(4)
+        for btn in buttons:
+            h.addWidget(btn)
+        return w
+
+    def _open_emission_edit(
         self, chunk_id: str, comp_name: str, data_index: int, item: dict
     ):
-        dialog = CarbonFixDialog(item, self)
+        from ...structure.widgets.manager import MaterialDialog
+        dialog = MaterialDialog(comp_name, parent=self, data=item, emissions_only=True)
         if dialog.exec():
-            new_vals = dialog.get_values()
+            vals = dialog.get_values()
             data = self.controller.engine.fetch_chunk(chunk_id) or {}
             if comp_name in data and data_index < len(data[comp_name]):
                 target = data[comp_name][data_index]
-                target["values"].update(new_vals)
-                target["state"]["included_in_carbon_emission"] = True
-                # User manually fixed/saved values, so we treat it as confirmed
+                target["values"]["carbon_emission"] = vals.get("carbon_emission", 0.0)
+                target["values"]["carbon_unit"] = vals.get("carbon_unit", "")
+                target["values"]["conversion_factor"] = vals.get("conversion_factor", 1.0)
+                target["state"]["included_in_carbon_emission"] = vals.get(
+                    "included_in_carbon_emission", True
+                )
                 target["state"]["carbon_conversion_confirmed"] = True
                 target["meta"]["modified_on"] = datetime.datetime.now().isoformat()
                 self.controller.engine.stage_update(chunk_name=chunk_id, data=data)

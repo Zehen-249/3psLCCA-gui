@@ -21,17 +21,7 @@ from PySide6.QtCore import Qt, QTimer
 
 from .transport_dialog import TransportDialog
 from PySide6.QtGui import QColor
-
-# ---------------------------------------------------------------------------
-# Constants
-# ---------------------------------------------------------------------------
-
-STRUCTURE_CHUNKS = [
-    ("str_foundation", "Foundation"),
-    ("str_sub_structure", "Sub Structure"),
-    ("str_super_structure", "Super Structure"),
-    ("str_misc", "Misc"),
-]
+from ...utils.definitions import STRUCTURE_CHUNKS, UNIT_DIMENSION
 
 
 # ---------------------------------------------------------------------------
@@ -168,7 +158,8 @@ def calc_vehicle_emission(entry: dict, mat_index: dict) -> tuple:
             warns.append("⚠ Zero kg — check factor")
         if trips > 1000:
             warns.append(f"⚠ {trips} trips — unusually high")
-        if abs(kg_factor - 1.0) < 1e-6 and unit.lower() != "kg":
+        is_mass = UNIT_DIMENSION.get(unit.lower()) == "Mass"
+        if not is_mass and abs(kg_factor - 1.0) < 1e-6:
             warns.append(f"⚠ 1:1 factor for {unit} — verify conversion")
 
         warn = " | ".join(warns)
@@ -226,7 +217,7 @@ class VehicleCard(QGroupBox):
             f"{v.get('name', 'Vehicle')}  —  "
             f"{r.get('origin', '?')} → {r.get('destination', '?')}  |  "
             f"{r.get('distance_km', 0)} km  |  "
-            f"{total_emission:,.2f} kgCO2e"
+            f"{total_emission:,.2f} kgCO₂e"
         )
         super().__init__(title, parent)
 
@@ -241,7 +232,7 @@ class VehicleCard(QGroupBox):
             f"Payload: {v.get('payload', 0)}t",
             f"Loading: {v.get('loading_pct', 100)}%",
             f"Eff. Payload: {v.get('effective_payload', 0):.2f}t",
-            f"EF: {v.get('emission_factor', 0)} kgCO2e/t-km",
+            f"EF: {v.get('emission_factor', 0)} kgCO₂e/t-km",
         ]
         for spec in specs:
             lbl = QLabel(spec)
@@ -284,12 +275,19 @@ class VehicleCard(QGroupBox):
                 "kg Factor",
                 "Qty (kg)",
                 "Trips",
-                "Emission (kgCO2e)",
+                "Emission (kgCO₂e)",
                 "Warnings",
             ]
         )
-        table.horizontalHeader().setSectionResizeMode(QHeaderView.Interactive)
-        table.horizontalHeader().setStretchLastSection(True)
+        h = table.horizontalHeader()
+        h.setStretchLastSection(False)
+        h.setSectionResizeMode(0, QHeaderView.Stretch)          # Material — most variable
+        h.setSectionResizeMode(1, QHeaderView.ResizeToContents) # Category
+        table.setColumnWidth(2, 75)   # kg Factor
+        table.setColumnWidth(3, 95)   # Qty (kg)
+        table.setColumnWidth(4, 55)   # Trips
+        table.setColumnWidth(5, 130)  # Emission (kgCO₂e)
+        h.setSectionResizeMode(6, QHeaderView.Stretch)          # Warnings
         table.setEditTriggers(QTableWidget.NoEditTriggers)
         table.setSelectionMode(QTableWidget.NoSelection)
         table.verticalHeader().setVisible(False)
@@ -388,7 +386,7 @@ class TransportEmissions(QWidget):
         summary_layout = QHBoxLayout(summary_bar)
         summary_layout.setContentsMargins(8, 8, 8, 8)
 
-        self.total_lbl = QLabel("Total Transport Emissions: — kgCO2e")
+        self.total_lbl = QLabel("Total Transport Emissions: — kgCO₂e")
         self.vehicle_lbl = QLabel("Vehicles: —")
         self.details_btn = QPushButton("Show Details ▼")
         self.details_btn.setFlat(True)
@@ -503,7 +501,7 @@ class TransportEmissions(QWidget):
 
         # Update summary
         self.total_lbl.setText(
-            f"Total Transport Emissions: {total_emission:,.2f} kgCO2e"
+            f"Total Transport Emissions: {total_emission:,.2f} kgCO₂e"
         )
         self.vehicle_lbl.setText(f"Vehicles: {active_count}")
         self.foundation_lbl.setText(

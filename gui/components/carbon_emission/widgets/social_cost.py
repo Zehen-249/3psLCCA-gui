@@ -102,10 +102,10 @@ CUSTOM_FIELDS = [
     FieldDef(
         "scc_value",
         "Social Cost of Carbon (SCC)",
-        "The financial cost attributed to 1 kg of CO2e emissions.",
+        "The financial cost attributed to 1 kg of CO₂e emissions.",
         "float",
         options=(0.0, 1e6, 6),
-        unit="Currency/kgCO2e",
+        unit="Currency/kgCO₂e",
     ),
 ]
 
@@ -199,7 +199,7 @@ class SocialCost(ScrollableForm):
         layout = self._make_panel_layout(w)
 
         _bc, _ = self._padded_label(
-            f"Base Value: <b>{NITI_AAYOG_SCC_INR} INR/kgCO2e</b> (NITI Aayog, 2023)",
+            f"Base Value: <b>{NITI_AAYOG_SCC_INR} INR/kgCO₂e</b> (NITI Aayog, 2023)",
             top=4,
             bottom=4,
         )
@@ -303,8 +303,8 @@ class SocialCost(ScrollableForm):
         rate = self.inr_to_local_rate.value() if cur != "INR" else 1.0
         val = NITI_AAYOG_SCC_INR * rate
         self._niti_result_lbl.setText(
-            f"NITI Aayog Base: <b>{NITI_AAYOG_SCC_INR} INR/kgCO2e</b><br/>"
-            f"Adjusted Local Cost: <b>{val:.6f} {cur}/kgCO2e</b>"
+            f"NITI Aayog Base: <b>{NITI_AAYOG_SCC_INR} INR/kgCO₂e</b><br/>"
+            f"Adjusted Local Cost: <b>{val:.6f} {cur}/kgCO₂e</b>"
         )
         self._set_result(val)
         self._on_field_changed()
@@ -325,14 +325,14 @@ class SocialCost(ScrollableForm):
         else:
             self._ricke_result_lbl.setText(
                 f"Scenario Baseline: <b>${base:.4f} USD/kg</b><br/>"
-                f"Adjusted Local Cost: <b>{val:.6f} {cur}/kgCO2e</b>"
+                f"Adjusted Local Cost: <b>{val:.6f} {cur}/kgCO₂e</b>"
             )
             self._set_result(val)
         self._on_field_changed()
 
     def _set_result(self, value):
         cur = self._project_currency or ""
-        self._result_lbl.setText(f"<b>Effective SCC: {value:.6f} {cur}/kgCO2e</b>")
+        self._result_lbl.setText(f"<b>Effective SCC: {value:.6f} {cur}/kgCO₂e</b>")
 
     # ── Global sync ───────────────────────────────────────────────────────────
 
@@ -345,7 +345,7 @@ class SocialCost(ScrollableForm):
 
         self.usd_to_local_rate.setSuffix(f" {self._project_currency}/USD")
         self.inr_to_local_rate.setSuffix(f" {self._project_currency}/INR")
-        self.scc_value.setSuffix(f" {self._project_currency}/kgCO2e")
+        self.scc_value.setSuffix(f" {self._project_currency}/kgCO₂e")
 
         self._suppress_signals = True
         if rate_usd > 0:
@@ -399,13 +399,13 @@ class SocialCost(ScrollableForm):
             "custom": {
                 "entered_value": custom_val,
                 "currency": cur,
-                "unit": f"{cur}/kgCO2e",
+                "unit": f"{cur}/kgCO₂e",
             },
             "result": {
                 "methodology": mode,
                 "cost_of_carbon_local": round(final, 6),
                 "currency": cur,
-                "unit": f"{cur}/kgCO2e",
+                "unit": f"{cur}/kgCO₂e",
                 "scientific_params": {
                     "ssp": ssp,
                     "rcp": rcp,
