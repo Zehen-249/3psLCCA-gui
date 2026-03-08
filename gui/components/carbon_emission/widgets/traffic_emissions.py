@@ -362,7 +362,6 @@ class TrafficEmissions(ScrollableForm):
     def _shrink_stack_to_current(self):
         self._stack.setCurrentIndex(self.mode.currentIndex())
 
-
     def _on_mode_changed(self, idx: int):
         if self._suppress_mode_signal:
             return
@@ -377,39 +376,39 @@ class TrafficEmissions(ScrollableForm):
     def _refresh_total(self):
         self._total_label.setText(f"{self._emissions_table.total_emissions():.4f}")
 
+
+
+
     def _load_traffic_context(self):
         if not (self.controller and self.controller.engine):
             return
 
         # ── Load data ─────────────────────────────────────────────────────
-        bridge = self.controller.engine.fetch_chunk(GEN_CHUNK) or {}
         traffic = self.controller.engine.fetch_chunk(TRAFFIC_CHUNK) or {}
 
         # ── Extract + normalize values ─────────────────────────────────────
-        raw_country = bridge.get("project_country")
         raw_mode = traffic.get("mode")
-
-        country = str(raw_country or "").strip().upper()
         traffic_mode = str(raw_mode or "").strip().upper()
         reroute = float(traffic.get("additional_reroute_distance_km", 0.0))
 
-        is_india = country == "INDIA"
-        can_calculate = is_india and traffic_mode == "INDIA"
+        can_calculate = traffic_mode == "INDIA"
 
         # ── Mode Handling ──────────────────────────────────────────────────
         self._suppress_mode_signal = True
 
-        if not can_calculate:
-            # Force "Enter Directly"
+        if can_calculate:
+            idx = self.mode.findText("Calculate by Vehicle")
+        else:
             idx = self.mode.findText("Enter Directly")
-            if idx >= 0:
-                self.mode.setCurrentIndex(idx)
-                self._stack.setCurrentIndex(idx)
+
+        if idx >= 0:
+            self.mode.setCurrentIndex(idx)
+            self._stack.setCurrentIndex(idx)
 
         self._suppress_mode_signal = False
 
-        # Enable combo ONLY when calculation is allowed
-        self.mode.setEnabled(can_calculate)
+        # Always locked — mode is determined automatically
+        self.mode.setEnabled(False)
 
         # ── Load reroute + vehicle data ────────────────────────────────────
         self._emissions_table.set_reroute_distance(reroute)
@@ -436,6 +435,10 @@ class TrafficEmissions(ScrollableForm):
         # ── Final refresh ───────────────────────────────────────────────────
         self._refresh_total()
         self._shrink_stack_to_current()
+
+
+
+
 
     # ── Data Collection ───────────────────────────────────────────────────────
 

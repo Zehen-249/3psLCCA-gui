@@ -148,6 +148,131 @@ class StructureTabView(QWidget):
         else:
             self.trash_btn.setText("Trash")
 
+    def validate(self) -> dict:
+        """
+        Called by OutputsPage when Validate is clicked.
+
+        Collects all structure data, computes component-wise and page-wise
+        totals, then returns warnings when:
+          - the grand total is zero (nothing entered / all trashed), or
+          - items are sitting in Trash (excluded from calculations).
+        """
+        if not self.controller or not self.controller.engine:
+            return {"errors": [], "warnings": []}
+
+        _PAGES = [
+            ("Foundation",      "str_foundation"),
+            ("Sub Structure",   "str_sub_structure"),
+            ("Super Structure", "str_super_structure"),
+            ("Miscellaneous",   "str_misc"),
+        ]
+
+        page_totals: dict[str, float] = {}
+        grand_total = 0.0
+        trash_count = 0
+
+        for page_name, chunk_id in _PAGES:
+            chunk_data = self.controller.engine.fetch_chunk(chunk_id) or {}
+            page_total = 0.0
+
+            for comp_name, items in chunk_data.items():
+                comp_total = 0.0
+                for item in items:
+                    if item.get("state", {}).get("in_trash", False):
+                        trash_count += 1
+                        continue
+                    v = item.get("values", {})
+                    qty  = float(v.get("quantity", 0) or 0)
+                    rate = float(v.get("rate",     0) or 0)
+                    comp_total += qty * rate
+                page_total += comp_total
+
+            page_totals[page_name] = page_total
+            grand_total += page_total
+
+        warnings = []
+
+        if grand_total == 0.0:
+            breakdown = "  |  ".join(
+                f"{name}: ₹0" for name, _ in _PAGES
+            )
+            warnings.append(
+                f"Total construction cost is ₹0 — no materials have been entered "
+                f"or all are in Trash. ({breakdown})"
+            )
+        else:
+            # Show page-wise breakdown only when total is suspicious (any page is zero)
+            zero_pages = [name for name, total in page_totals.items() if total == 0.0]
+            if zero_pages:
+                warnings.append(
+                    "The following tabs have no materials (₹0): "
+                    + ", ".join(zero_pages)
+                )
+
+        if trash_count > 0:
+            warnings.append(
+                f"{trash_count} item{'s' if trash_count != 1 else ''} "
+                f"in Trash — excluded from all calculations. "
+                f"Open the Trash view to restore them."
+            )
+
+        return {"errors": [], "warnings": warnings}
+
+    def get_data(self) -> dict:
+        """
+        Called by OutputsPage when Proceed with Calculation is clicked.
+
+        Returns a single dict with raw items per tab, component-wise totals,
+        page-wise totals, and the overall grand total.
+        """
+        _PAGES = [
+            ("Foundation",      "str_foundation"),
+            ("Sub Structure",   "str_sub_structure"),
+            ("Super Structure", "str_super_structure"),
+            ("Miscellaneous",   "str_misc"),
+        ]
+
+        pages_data = {}
+        grand_total = 0.0
+
+        if self.controller and self.controller.engine:
+            for page_name, chunk_id in _PAGES:
+                chunk_data = self.controller.engine.fetch_chunk(chunk_id) or {}
+                page_total = 0.0
+                components = {}
+
+                for comp_name, items in chunk_data.items():
+                    comp_total = 0.0
+                    active_items = []
+                    for item in items:
+                        if item.get("state", {}).get("in_trash", False):
+                            continue
+                        v = item.get("values", {})
+                        qty  = float(v.get("quantity", 0) or 0)
+                        rate = float(v.get("rate",     0) or 0)
+                        item_total = qty * rate
+                        comp_total += item_total
+                        active_items.append({**item, "total": item_total})
+                    components[comp_name] = {
+                        "items": active_items,
+                        "total": comp_total,
+                    }
+                    page_total += comp_total
+
+                pages_data[page_name] = {
+                    "components": components,
+                    "total": page_total,
+                }
+                grand_total += page_total
+
+        return {
+            "chunk": "construction_work_data",
+            "data": {
+                **pages_data,
+                "grand_total": grand_total,
+            },
+        }
+
     def select_tab(self, name: str):
         """External helper to switch tabs (e.g., from a Sidebar)."""
         mapping = {
