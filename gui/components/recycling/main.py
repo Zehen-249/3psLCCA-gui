@@ -286,52 +286,23 @@ class Recycling(QWidget):
         if not self.controller or not getattr(self.controller, "engine", None):
             return
 
-        included_items = []
-        excluded_items = []
+        result = self._compute()
 
-        cat_totals = {label: 0.0 for _, label in CHUNKS}
-        total_value = 0.0
-        total_count = 0
-        included_count = 0
+        # Augment included items with per-row warning for display
+        included_with_warn = [
+            (cat, chunk_id, comp, idx, item, value,
+             "! Zero Qty" if float(item.get("values", {}).get("quantity", 0) or 0) == 0 else "")
+            for cat, chunk_id, comp, idx, item, value in result["included_items"]
+        ]
 
-        currency = self._get_currency()
-
-        for chunk_id, category in CHUNKS:
-            data = self.controller.engine.fetch_chunk(chunk_id) or {}
-
-            for comp_name, items in data.items():
-                for idx, item in enumerate(items):
-                    if item.get("state", {}).get("in_trash", False):
-                        continue
-
-                    total_count += 1
-                    valid = is_recyclable_valid(item)
-                    included = item.get("state", {}).get(
-                        "included_in_recyclability", True
-                    )
-
-                    if valid and included:
-                        included_count += 1
-                        value = calc_recovered_value(item)
-                        total_value += value
-                        cat_totals[category] += value
-
-                        v = item.get("values", {})
-                        qty = float(v.get("quantity", 0) or 0)
-                        warn = "! Zero Qty" if qty == 0 else ""
-                        included_items.append(
-                            (category, chunk_id, comp_name, idx, item, value, warn)
-                        )
-                    else:
-                        reason = "Missing Data" if not valid else "User Excluded"
-                        excluded_items.append(
-                            (category, chunk_id, comp_name, idx, item, reason)
-                        )
-
-        self._populate_included(included_items, currency)
-        self._populate_excluded(excluded_items)
+        self._populate_included(included_with_warn, result["currency"])
+        self._populate_excluded(result["excluded_items"])
         self._update_summary(
-            total_value, included_count, total_count, cat_totals, currency
+            result["total_recovered_value"],
+            result["included_count"],
+            result["total_count"],
+            result["cat_totals"],
+            result["currency"],
         )
 
     def _populate_included(self, items, currency: str):
@@ -491,12 +462,120 @@ class Recycling(QWidget):
             except Exception:
                 pass
 
-    def validate(self):
-        from gui.components.utils.form_builder.form_definitions import ValidationStatus
-        return ValidationStatus.SUCCESS, []
+    def _compute(self) -> dict:
+        """
+        Core calculation logic shared by on_refresh(), validate(), and get_data().
+        Returns raw computed data without touching any UI.
+        """
+        cat_totals = {label: 0.0 for _, label in CHUNKS}
+        included_items = []
+        excluded_items = []
+        total_value = 0.0
+        total_count = 0
+        included_count = 0
+
+        if not self.controller or not getattr(self.controller, "engine", None):
+            return {
+                "total_recovered_value": 0.0,
+                "cat_totals": cat_totals,
+                "included_count": 0,
+                "total_count": 0,
+                "included_items": [],
+                "excluded_items": [],
+                "currency": "",
+            }
+
+        currency = self._get_currency()
+
+        for chunk_id, category in CHUNKS:
+            data = self.controller.engine.fetch_chunk(chunk_id) or {}
+            for comp_name, items in data.items():
+                for idx, item in enumerate(items):
+                    if item.get("state", {}).get("in_trash", False):
+                        continue
+
+                    total_count += 1
+                    valid = is_recyclable_valid(item)
+                    included = item.get("state", {}).get("included_in_recyclability", True)
+
+                    if valid and included:
+                        included_count += 1
+                        value = calc_recovered_value(item)
+                        total_value += value
+                        cat_totals[category] += value
+                        included_items.append(
+                            (category, chunk_id, comp_name, idx, item, value)
+                        )
+                    else:
+                        reason = "Missing Data" if not valid else "User Excluded"
+                        excluded_items.append(
+                            (category, chunk_id, comp_name, idx, item, reason)
+                        )
+
+        return {
+            "total_recovered_value": total_value,
+            "cat_totals": cat_totals,
+            "included_count": included_count,
+            "total_count": total_count,
+            "included_items": included_items,
+            "excluded_items": excluded_items,
+            "currency": currency,
+        }
+
+    def validate(self) -> dict:
+        result = self._compute()
+        warnings = []
+
+        if result["total_count"] == 0:
+            warnings.append(
+                "No materials found — add items in the Construction Work Data section."
+            )
+        elif result["total_recovered_value"] == 0.0:
+            warnings.append(
+                f"Total recovered value is 0 — "
+                f"{result['included_count']} of {result['total_count']} items are included."
+            )
+
+        missing = sum(
+            1 for *_, reason in result["excluded_items"] if reason == "Missing Data"
+        )
+        if missing:
+            warnings.append(
+                f"{missing} item{'s' if missing != 1 else ''} excluded — "
+                f"missing recyclability % or scrap rate data."
+            )
+
+        return {"errors": [], "warnings": warnings}
 
     def get_data(self) -> dict:
-        return {"chunk": "recycling_data", "data": {}}
+        result = self._compute()
+        currency = result["currency"]
+        included = [
+            {
+                "material_id": item.get("id", ""),
+                "category": cat,
+                "component": comp,
+                "material": item.get("values", {}).get("material_name", ""),
+                "quantity": float(item.get("values", {}).get("quantity", 0) or 0),
+                "unit": item.get("values", {}).get("unit", ""),
+                "recyclability_pct": _recycle_pct(item.get("values", {})),
+                "recyclable_qty": calc_recyclable_qty(item),
+                "scrap_rate": float(item.get("values", {}).get("scrap_rate", 0) or 0),
+                "recovered_value": value,
+            }
+            for cat, chunk_id, comp, idx, item, value in result["included_items"]
+        ]
+        return {
+            "chunk": "recycling_data",
+            "data": {
+                "included_items": included,
+                "cat_totals": result["cat_totals"],
+                "total_recovered_value": result["total_recovered_value"],
+                "included_count": result["included_count"],
+                "total_count": result["total_count"],
+                "currency": currency,
+            },
+        }
 
     def showEvent(self, event):
         super().showEvent(event)
