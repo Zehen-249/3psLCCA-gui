@@ -44,29 +44,29 @@ VEHICLES = [
 ]
 
 VEHICLE_COST_KEYS = [
-    "propertyDamage",
-    "tyreCost",
-    "spareParts",
-    "fixedDepreciation",
+    "property_damage",
+    "tyre_cost",
+    "spare_parts",
+    "fixed_depreciation",
 ]
 
 FUEL_KEYS = ["petrol", "diesel", "engine_oil", "other_oil", "grease"]
 MEDICAL_KEYS = ["fatal", "major", "minor"]
-PASSENGER_CREW_KEYS = ["passenger", "crew"]
+PASSENGER_CREW_KEYS = ["passenger_cost", "crew_cost"]
 
 
 def empty_data() -> dict:
     """Return a zeroed WPI data block with correct structure."""
     return {
-        "fuelCost": {k: 1.0 for k in FUEL_KEYS},
-        "vehicleCost": {
+        "fuel_cost": {k: 1.0 for k in FUEL_KEYS},
+        "vehicle_cost": {
             sub: {v: 1.0 for v in VEHICLES}
             for sub in VEHICLE_COST_KEYS
         },
-        "commodityHoldingCost": {v: 1.0 for v in VEHICLES},
-        "passengerCrewCost": {k: 1.0 for k in PASSENGER_CREW_KEYS},
-        "medicalCost": {k: 1.0 for k in MEDICAL_KEYS},
-        "votCost": {v: 1.0 for v in VEHICLES},
+        "commodity_holding_cost": {v: 1.0 for v in VEHICLES},
+        "passenger_crew_cost": {k: 1.0 for k in PASSENGER_CREW_KEYS},
+        "medical_cost": {k: 1.0 for k in MEDICAL_KEYS},
+        "vot_cost": {v: 1.0 for v in VEHICLES},
     }
 
 

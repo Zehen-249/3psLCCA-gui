@@ -18,7 +18,7 @@
                     "other_oil": 92.5,
                     "grease": 92.5
                 },
-                "vehicleCost": {
+                "vehicle_cost": {
                     "propertyDamage": {
                         "small_cars": 113.2,
                         "big_cars": 113.2,
@@ -71,8 +71,8 @@
                     "mcv": 101.7
                 },
                 "passengerCrewCost": {
-                    "passenger": 121.2,
-                    "crew": 121.2
+                    "passenger_cost": 121.2,
+                    "crew_cost": 121.2
                 },
                 "medicalCost": {
                     "fatal": 132.5,
@@ -108,7 +108,7 @@
                     "other_oil": 78.1,
                     "grease": 78.1
                 },
-                "vehicleCost": {
+                "vehicle_cost": {
                     "propertyDamage": {
                         "small_cars": 115.5,
                         "big_cars": 115.5,
@@ -161,8 +161,8 @@
                     "mcv": 93.3
                 },
                 "passengerCrewCost": {
-                    "passenger": 121.8,
-                    "crew": 121.8
+                    "passenger_cost": 121.8,
+                    "crew_cost": 121.8
                 },
                 "medicalCost": {
                     "fatal": 135.8,
@@ -198,7 +198,7 @@
                     "other_oil": 113.8,
                     "grease": 113.8
                 },
-                "vehicleCost": {
+                "vehicle_cost": {
                     "propertyDamage": {
                         "small_cars": 120.6,
                         "big_cars": 120.6,
@@ -251,8 +251,8 @@
                     "mcv": 116.1
                 },
                 "passengerCrewCost": {
-                    "passenger": 135,
-                    "crew": 135
+                    "passenger_cost": 135,
+                    "crew_cost": 135
                 },
                 "medicalCost": {
                     "fatal": 139.5,
@@ -288,7 +288,7 @@
                     "other_oil": 168.2,
                     "grease": 168.2
                 },
-                "vehicleCost": {
+                "vehicle_cost": {
                     "propertyDamage": {
                         "small_cars": 128.5,
                         "big_cars": 128.5,
@@ -341,8 +341,8 @@
                     "mcv": 155.2
                 },
                 "passengerCrewCost": {
-                    "passenger": 151.3,
-                    "crew": 151.3
+                    "passenger_cost": 151.3,
+                    "crew_cost": 151.3
                 },
                 "medicalCost": {
                     "fatal": 140.5,
@@ -378,7 +378,7 @@
                     "other_oil": 160.1,
                     "grease": 160.1
                 },
-                "vehicleCost": {
+                "vehicle_cost": {
                     "propertyDamage": {
                         "small_cars": 128.2,
                         "big_cars": 128.2,
@@ -431,8 +431,8 @@
                     "mcv": 152.7
                 },
                 "passengerCrewCost": {
-                    "passenger": 151.3,
-                    "crew": 151.3
+                    "passenger_cost": 151.3,
+                    "crew_cost": 151.3
                 },
                 "medicalCost": {
                     "fatal": 142.5,
@@ -468,7 +468,7 @@
                     "other_oil": 156.8,
                     "grease": 156.8
                 },
-                "vehicleCost": {
+                "vehicle_cost": {
                     "propertyDamage": {
                         "small_cars": 129.0,
                         "big_cars": 129.0,
@@ -521,8 +521,8 @@
                     "mcv": 150.4
                 },
                 "passengerCrewCost": {
-                    "passenger": 154,
-                    "crew": 154
+                    "passenger_cost": 154,
+                    "crew_cost": 154
                 },
                 "medicalCost": {
                     "fatal": 144.0,
@@ -558,7 +558,7 @@
                     "other_oil": 150.73,
                     "grease": 150.73
                 },
-                "vehicleCost": {
+                "vehicle_cost": {
                     "propertyDamage": {
                         "small_cars": 130.02,
                         "big_cars": 130.02,
@@ -611,8 +611,8 @@
                     "mcv": 146.58
                 },
                 "passengerCrewCost": {
-                    "passenger": 154.93,
-                    "crew": 154.93
+                    "passenger_cost": 154.93,
+                    "crew_cost": 154.93
                 },
                 "medicalCost": {
                     "fatal": 146.48,

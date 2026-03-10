@@ -814,6 +814,13 @@ class TrafficData(ScrollableForm):
     def collect_data(self) -> dict:
         data = super().get_data_dict()
 
+        # Map Back the alternate_road_carriageway to Lane Codes
+        alternate_road_carriageway = data.get("alternate_road_carriageway")
+        for dic in LANE_TYPES:
+            if dic.get("name") == alternate_road_carriageway:
+                data["alternate_road_carriageway"] = dic.get("code")
+                break
+
         data["mode"] = self.mode.currentText()
         data["remarks"] = self._remarks.to_html()
         data["force_free_flow_off_peak"] = bool(self._force_free_flow.isChecked())

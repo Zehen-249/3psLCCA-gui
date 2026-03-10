@@ -518,3 +518,6 @@ class SocialCost(ScrollableForm):
         self._suppress_signals = False
         self._on_mode_changed()
         self._on_field_changed()
+    
+    def get_data(self) -> dict:
+        return {"chunk": CHUNK, "data": self.get_data_dict()}

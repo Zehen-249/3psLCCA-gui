@@ -532,3 +532,6 @@ class TrafficEmissions(ScrollableForm):
         self._remarks.clear_content()
         self._refresh_total()
         self._on_field_changed()
+    
+    def get_data(self) -> dict:
+        return {"chunk": CHUNK, "data": self.get_data_dict()}

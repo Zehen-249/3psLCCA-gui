@@ -50,22 +50,22 @@ class _ColDef:
 
 
 _COLUMNS: list[_ColDef] = [
-    _ColDef("Fuel Cost", "Petrol", ("fuelCost", "petrol")),
-    _ColDef("Fuel Cost", "Diesel", ("fuelCost", "diesel")),
-    _ColDef("Fuel Cost", "Engine Oil", ("fuelCost", "engine_oil")),
-    _ColDef("Fuel Cost", "Other Oil", ("fuelCost", "other_oil")),
-    _ColDef("Fuel Cost", "Grease", ("fuelCost", "grease")),
-    _ColDef("Vehicle Cost", "Prop. Damage", ("vehicleCost", "propertyDamage", "{v}")),
-    _ColDef("Vehicle Cost", "Tyre Cost", ("vehicleCost", "tyreCost", "{v}")),
-    _ColDef("Vehicle Cost", "Spare Parts", ("vehicleCost", "spareParts", "{v}")),
-    _ColDef("Vehicle Cost", "Fixed Depr.", ("vehicleCost", "fixedDepreciation", "{v}")),
-    _ColDef("Commodity", "Hold. Cost", ("commodityHoldingCost", "{v}")),
-    _ColDef("Pass. & Crew", "Passenger", ("passengerCrewCost", "passenger")),
-    _ColDef("Pass. & Crew", "Crew", ("passengerCrewCost", "crew")),
-    _ColDef("Medical Cost", "Fatal", ("medicalCost", "fatal")),
-    _ColDef("Medical Cost", "Major", ("medicalCost", "major")),
-    _ColDef("Medical Cost", "Minor", ("medicalCost", "minor")),
-    _ColDef("VOT Cost", "VOT Cost", ("votCost", "{v}")),
+    _ColDef("Fuel Cost", "Petrol", ("fuel_cost", "petrol")),
+    _ColDef("Fuel Cost", "Diesel", ("fuel_cost", "diesel")),
+    _ColDef("Fuel Cost", "Engine Oil", ("fuel_cost", "engine_oil")),
+    _ColDef("Fuel Cost", "Other Oil", ("fuel_cost", "other_oil")),
+    _ColDef("Fuel Cost", "Grease", ("fuel_cost", "grease")),
+    _ColDef("Vehicle Cost", "Prop. Damage", ("vehicle_cost", "property_damage", "{v}")),
+    _ColDef("Vehicle Cost", "Tyre Cost", ("vehicle_cost", "tyre_cost", "{v}")),
+    _ColDef("Vehicle Cost", "Spare Parts", ("vehicle_cost", "spare_parts", "{v}")),
+    _ColDef("Vehicle Cost", "Fixed Depr.", ("vehicle_cost", "fixed_depreciation", "{v}")),
+    _ColDef("Commodity", "Hold. Cost", ("commodity_holding_cost", "{v}")),
+    _ColDef("Pass. & Crew", "Passenger", ("passenger_crew_cost", "passenger_cost")),
+    _ColDef("Pass. & Crew", "Crew", ("passenger_crew_cost", "crew_cost")),
+    _ColDef("Medical Cost", "Fatal", ("medical_cost", "fatal")),
+    _ColDef("Medical Cost", "Major", ("medical_cost", "major")),
+    _ColDef("Medical Cost", "Minor", ("medical_cost", "minor")),
+    _ColDef("VOT Cost", "VOT Cost", ("vot_cost", "{v}")),
 ]
 
 _N_COLS = len(_COLUMNS)
