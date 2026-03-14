@@ -575,6 +575,10 @@ class MachineryEmissions(ScrollableForm):
         super().__init__(controller=controller, chunk_name=CHUNK)
         self._loading = False
         self._build_ui()
+        self._loading = True
+        self._detailed_table._load_defaults()
+        self._loading = False
+        self._on_totals_changed()
         if self.controller and hasattr(self.controller, "chunk_updated"):
             self.controller.chunk_updated.connect(self._on_chunk_updated)
 

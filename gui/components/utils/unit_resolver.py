@@ -46,6 +46,15 @@ def get_custom_units() -> list[dict]:
     return _custom_units_cache
 
 
+def get_known_units() -> set[str]:
+    """Return the full set of recognised unit codes (canonical + aliases).
+
+    Derived from UNIT_TO_SI and _UNIT_ALIASES so there is a single source
+    of truth — no hardcoded lists elsewhere in the codebase.
+    """
+    return set(UNIT_TO_SI.keys()) | set(_UNIT_ALIASES.keys())
+
+
 # ---------------------------------------------------------------------------
 # Aliases — normalise SOR / registry strings to canonical unit codes
 # Mirrors _SOR_UNIT_ALIASES in material_dialog.py plus extra common variants

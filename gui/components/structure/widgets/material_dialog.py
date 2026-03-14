@@ -899,6 +899,18 @@ class MaterialDialog(QDialog):
         denom_col.addWidget(self.carbon_denom_cb)
         ef_row.addLayout(denom_col, stretch=1)
 
+        src_col = QVBoxLayout()
+        src_col.setSpacing(3)
+        src_col.addWidget(_lbl("Emission Factor Source"))
+        self._original_carbon_src = v.get("carbon_emission_src", "")
+        self.carbon_src_in = QLineEdit(self._original_carbon_src)
+        self.carbon_src_in.setPlaceholderText("e.g. ICE v3.0, IPCC")
+        self.carbon_src_in.setMinimumHeight(32)
+        if self.is_edit:
+            self.carbon_src_in.clear()
+        src_col.addWidget(self.carbon_src_in)
+        ef_row.addLayout(src_col, stretch=1)
+
         cl.addLayout(ef_row)
 
         self.cf_row_widget = QWidget()
@@ -1138,7 +1150,8 @@ class MaterialDialog(QDialog):
         # ── Re-apply DB lock when editing a previously SOR-filled material ──
         # If the saved data came from a SOR suggestion and the user hasn't
         # overridden it, lock the fields just as _on_suggestion_selected would.
-        if self.is_edit and v.get("_from_sor", False):
+        _src = (data.get("meta", {}).get("source", "manual") if data else "manual")
+        if self.is_edit and _src in ("db", "db_modified", "custom_db", "custom_db_modified"):
             # Always re-lock SOR fields when opening an edit dialog, regardless
             # of whether the user previously customized values (_is_customized).
             # Try to recover the original SOR item so the "Allow editing →
@@ -1284,6 +1297,7 @@ class MaterialDialog(QDialog):
         self.src_in.setReadOnly(lock)
         self.carbon_em_in.setReadOnly(lock)
         self.carbon_denom_cb.setEnabled(not lock)
+        self.carbon_src_in.setReadOnly(lock)
         self.conv_factor_in.setReadOnly(lock)
 
     def _on_allow_edit_toggled(self, checked: bool):
@@ -1291,8 +1305,10 @@ class MaterialDialog(QDialog):
         if checked:
             # User is declaring this as custom — enable carbon checkbox so they can include it
             self._pre_allow_edit_source = self.src_in.text()
+            self._pre_allow_edit_carbon_src = self.carbon_src_in.text()
             self._sor_filling = True
             self.src_in.clear()
+            self.carbon_src_in.clear()
             self._sor_filling = False
             self._is_modified_by_user = True
             self.carbon_chk.setEnabled(True)
@@ -1313,6 +1329,9 @@ class MaterialDialog(QDialog):
 
                     src = item.get('rate_src', '')
                     self.src_in.setText(str(src) if src not in ('', 'not_available', None) else '')
+
+                    carbon_src = item.get('carbon_emission_src', '')
+                    self.carbon_src_in.setText(str(carbon_src) if carbon_src not in ('', 'not_available', None) else '')
 
                     carbon = item.get('carbon_emission', 'not_available')
                     denom = item.get('carbon_emission_units_den', 'not_available')
@@ -1342,14 +1361,19 @@ class MaterialDialog(QDialog):
                 self._is_modified_by_user = False
                 self._update_cf()
             else:
-                # No DB suggestion — restore the source saved at check time, or the original
+                # No DB suggestion — restore the sources saved at check time, or the originals
                 restore_src = getattr(self, '_pre_allow_edit_source', None)
                 if restore_src is None:
                     restore_src = self._original_source
+                restore_carbon_src = getattr(self, '_pre_allow_edit_carbon_src', None)
+                if restore_carbon_src is None:
+                    restore_carbon_src = self._original_carbon_src
+                self._sor_filling = True
                 if restore_src:
-                    self._sor_filling = True
                     self.src_in.setText(restore_src)
-                    self._sor_filling = False
+                if restore_carbon_src:
+                    self.carbon_src_in.setText(restore_carbon_src)
+                self._sor_filling = False
 
         self._lock_autofilled_fields(not checked)
 
@@ -1431,6 +1455,9 @@ class MaterialDialog(QDialog):
                 self.carbon_em_in.setText('')
             self.carbon_chk.setChecked(carbon_available)
             self.carbon_chk.setEnabled(carbon_available)
+
+            carbon_src = item.get('carbon_emission_src', '')
+            self.carbon_src_in.setText(str(carbon_src) if carbon_src not in ('', 'not_available', None) else '')
 
             cf = item.get('conversion_factor', 'not_available')
             if cf not in ('not_available', '', None, 0, 0.0):

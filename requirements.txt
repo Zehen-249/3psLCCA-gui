@@ -2,4 +2,7 @@ PySide6
 psutil
 Pillow
 matplotlib
+pandas
+numpy
+openpyxl
 -e ./3psLCCA-core

@@ -6,14 +6,39 @@ from PySide6.QtWidgets import (
     QPushButton,
     QLabel,
     QStackedWidget,
+    QFileDialog,
+    QMessageBox,
 )
+from PySide6.QtCore import QThread, Signal
 from PySide6.QtGui import QPalette
 from ..utils.validation_helpers import LOCK_TOOLTIP, freeze_widgets
+from .excel_importer import parse_excel, verify_schema, ImportPreviewWindow
 from .widgets.foundation import FoundationWidget
 from .widgets.super_structure import SuperStructureWidget
 from .widgets.substructure import SubStructureWidget
 from .widgets.misc_widget import MiscWidget
 from .widgets.trash_tab import TrashTabWidget
+
+
+class _ExcelParseWorker(QThread):
+    """Runs parse_excel + verify_schema off the main thread."""
+    finished = Signal(dict)   # emits verified parsed data
+    error    = Signal(str)    # emits error message string
+
+    def __init__(self, path: str, parent=None):
+        super().__init__(parent)
+        self._path = path
+
+    def run(self):
+        try:
+            parsed = parse_excel(self._path)
+            if not parsed:
+                self.error.emit("empty")
+                return
+            parsed = verify_schema(parsed)
+            self.finished.emit(parsed)
+        except Exception as exc:
+            self.error.emit(str(exc))
 
 
 class StructureTabView(QWidget):
@@ -75,6 +100,7 @@ class StructureTabView(QWidget):
         self.main_layout.addWidget(self.content_stack)
 
         # --- CONNECTIONS ---
+        self.excel_btn.clicked.connect(self._open_excel_import)
         self.trash_btn.clicked.connect(self.toggle_trash_view)
 
     def on_refresh(self):
@@ -148,6 +174,51 @@ class StructureTabView(QWidget):
             self.trash_btn.setText(f"Trash ({total_count})")
         else:
             self.trash_btn.setText("Trash")
+
+    def _open_excel_import(self):
+        path, _ = QFileDialog.getOpenFileName(
+            self, "Select Excel File", "", "Excel Files (*.xlsx *.xls)"
+        )
+        if not path:
+            return
+
+        self.excel_btn.setEnabled(False)
+        self.excel_btn.setText("Parsing…")
+
+        self._excel_worker = _ExcelParseWorker(path, parent=self)
+        self._excel_worker.finished.connect(self._on_excel_parsed)
+        self._excel_worker.error.connect(self._on_excel_error)
+        self._excel_worker.start()
+
+    def _on_excel_parsed(self, parsed: dict):
+        self.excel_btn.setEnabled(True)
+        self.excel_btn.setText("Upload Excel")
+
+        # Warn about sheets routed to Misc
+        fallback_sheets = [
+            s for s, rows in parsed.items()
+            if rows and rows[0].get("_is_fallback_chunk")
+        ]
+        if fallback_sheets:
+            names = ", ".join(f'"{s}"' for s in fallback_sheets)
+            QMessageBox.information(
+                self, "Unrecognised Sheet(s)",
+                f"The following sheet(s) didn't match a known structural category "
+                f"and will be imported into <b>Misc</b> as new components:<br><br>{names}",
+            )
+
+        preview = ImportPreviewWindow(parsed, manager=self.foundation_tab, parent=self)
+        preview.showMaximized()
+        if preview.exec():
+            self.on_refresh()
+
+    def _on_excel_error(self, msg: str):
+        self.excel_btn.setEnabled(True)
+        self.excel_btn.setText("Upload Excel")
+        if msg == "empty":
+            QMessageBox.warning(self, "Empty File", "No data found in the selected file.")
+        else:
+            QMessageBox.critical(self, "Parse Error", msg)
 
     def freeze(self, frozen: bool = True):
         freeze_widgets(frozen, self.excel_btn, self.trash_btn)

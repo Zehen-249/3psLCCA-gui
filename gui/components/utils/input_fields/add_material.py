@@ -51,6 +51,12 @@ FIELD_DEFINITIONS = {
         "doc_slug": "carbon-unit",
         "required": False,
     },
+    "carbon_emission_src": {
+        "label": "Emission Factor Source",
+        "explanation": "Reference database or standard used for the emission factor. Example: ICE v3.0, IPCC AR6, ecoinvent.",
+        "doc_slug": "emission-factor-source",
+        "required": False,
+    },
     "conversion_factor": {
         "label": "Conversion Factor",
         "explanation": (

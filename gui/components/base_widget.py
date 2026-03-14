@@ -247,6 +247,7 @@ class ScrollableForm(BaseDataWidget):
         scroll.setWidget(self._content)
         scroll.setWidgetResizable(True)
         scroll.setFrameShape(QScrollArea.NoFrame)
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
 
         for w in (scroll, scroll.viewport(), self._content):
             w.setAutoFillBackground(False)

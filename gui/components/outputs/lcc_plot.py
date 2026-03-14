@@ -10,7 +10,12 @@ import matplotlib
 matplotlib.use("QtAgg")
 import matplotlib.pyplot as plt
 
-from PySide6.QtWidgets import QApplication, QVBoxLayout, QWidget
+from PySide6.QtCore import QEvent, QObject, QSize, Qt
+from PySide6.QtGui import QColor, QFont
+from PySide6.QtWidgets import (
+    QApplication, QHeaderView, QLabel, QScrollArea,
+    QSizePolicy, QTableWidget, QTableWidgetItem, QVBoxLayout, QWidget,
+)
 
 try:
     from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg, NavigationToolbar2QT
@@ -238,8 +243,168 @@ def _create_figure(values, labels, stage_info, text_color, bg_color):
 
 
 # ---------------------------------------------------------------------------
+# Summary table — stage × category
+# ---------------------------------------------------------------------------
+
+# Each entry: (stage_label, result_key, {category: [keys...]} )
+# Prefix a key with "-" to subtract it (scrap value credits).
+_STAGE_DEFS = [
+    ("Initial Stage", "initial_stage", {
+        "Economic":      ["initial_construction_cost", "time_cost_of_loan"],
+        "Environmental": ["initial_material_carbon_emission_cost", "initial_vehicular_emission_cost"],
+        "Social":        ["initial_road_user_cost"],
+    }),
+    ("Use Stage", "use_stage", {
+        "Economic":      ["routine_inspection_costs", "periodic_maintenance",
+                          "major_inspection_costs", "major_repair_cost",
+                          "replacement_costs_for_bearing_and_expansion_joint"],
+        "Environmental": ["periodic_carbon_costs",
+                          "major_repair_material_carbon_emission_costs",
+                          "major_repair_vehicular_emission_costs",
+                          "vehicular_emission_costs_for_replacement_of_bearing_and_expansion_joint"],
+        "Social":        ["major_repair_road_user_costs",
+                          "road_user_costs_for_replacement_of_bearing_and_expansion_joint"],
+    }),
+    ("Reconstruction Stage", "reconstruction", {
+        "Economic":      ["cost_of_reconstruction_after_demolition", "time_cost_of_loan",
+                          "total_demolition_and_disposal_costs", "-total_scrap_value"],
+        "Environmental": ["carbon_cost_of_reconstruction_after_demolition",
+                          "carbon_costs_demolition_and_disposal",
+                          "demolition_vehicular_emission_cost",
+                          "reconstruction_vehicular_emission_cost"],
+        "Social":        ["ruc_demolition", "ruc_reconstruction"],
+    }),
+    ("End-of-Life Stage", "end_of_life", {
+        "Economic":      ["total_demolition_and_disposal_costs", "-total_scrap_value"],
+        "Environmental": ["carbon_costs_demolition_and_disposal", "demolition_vehicular_emission_cost"],
+        "Social":        ["ruc_demolition"],
+    }),
+]
+
+
+def _stage_totals(results: dict, result_key: str, cat_keys: dict) -> dict:
+    """Return {category: total_M_INR} for one stage."""
+    stage_data = results.get(result_key, {})
+    # Skip if the stage has no numeric data (e.g. reconstruction not applicable)
+    if not isinstance(stage_data.get("economic", None), dict):
+        return {}
+    totals = {}
+    for cat, keys in cat_keys.items():
+        cat_key = cat.lower()
+        cat_data = stage_data.get(cat_key, {})
+        total = 0.0
+        for k in keys:
+            if k.startswith("-"):
+                total -= M(cat_data.get(k[1:], 0.0))
+            else:
+                total += M(cat_data.get(k, 0.0))
+        totals[cat] = total
+    return totals
+
+
+class LCCDetailsTable(QWidget):
+    """Stage × category summary of LCC costs."""
+
+    def __init__(self, results: dict, parent=None):
+        super().__init__(parent)
+        self._build(results)
+
+    def _build(self, results: dict):
+        # Compute per-stage totals
+        stage_rows = []
+        for stage_label, result_key, cat_keys in _STAGE_DEFS:
+            totals = _stage_totals(results, result_key, cat_keys)
+            if not totals:
+                continue  # stage not applicable
+            eco  = totals.get("Economic",      0.0)
+            env  = totals.get("Environmental", 0.0)
+            soc  = totals.get("Social",        0.0)
+            stage_rows.append((stage_label, eco, env, soc, eco + env + soc))
+
+        n_rows = len(stage_rows) + 1  # +1 grand total
+
+        table = QTableWidget(n_rows, 5, self)
+        table.setHorizontalHeaderLabels([
+            "Stage", "Economic\n(M INR)", "Environmental\n(M INR)",
+            "Social\n(M INR)", "Stage Total\n(M INR)",
+        ])
+        table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeToContents)
+        for col in range(1, 5):
+            table.horizontalHeader().setSectionResizeMode(col, QHeaderView.Stretch)
+        table.verticalHeader().setVisible(False)
+        table.setEditTriggers(QTableWidget.NoEditTriggers)
+        table.setSelectionBehavior(QTableWidget.SelectRows)
+        table.setAlternatingRowColors(True)
+        table.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        table.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+
+        bold = QFont()
+        bold.setBold(True)
+
+        def _item(text, align=Qt.AlignLeft | Qt.AlignVCenter, font=None, green=False):
+            it = QTableWidgetItem(text)
+            it.setTextAlignment(align)
+            if font:
+                it.setFont(font)
+            if green:
+                it.setForeground(QColor("#2e7d32"))
+            it.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable)
+            return it
+
+        def _val(v, bold_font=None):
+            text = f"{v:.4f}"
+            return _item(text, Qt.AlignRight | Qt.AlignVCenter, bold_font, green=(v < 0))
+
+        grand_eco = grand_env = grand_soc = grand_total = 0.0
+
+        for row_idx, (label, eco, env, soc, total) in enumerate(stage_rows):
+            grand_eco   += eco
+            grand_env   += env
+            grand_soc   += soc
+            grand_total += total
+            table.setItem(row_idx, 0, _item(label))
+            table.setItem(row_idx, 1, _val(eco))
+            table.setItem(row_idx, 2, _val(env))
+            table.setItem(row_idx, 3, _val(soc))
+            table.setItem(row_idx, 4, _val(total))
+
+        # Grand total row
+        tr = len(stage_rows)
+        table.setItem(tr, 0, _item("Grand Total", font=bold))
+        for col, val in enumerate([grand_eco, grand_env, grand_soc, grand_total], start=1):
+            table.setItem(tr, col, _val(val, bold_font=bold))
+
+        table.resizeRowsToContents()
+        table.setSizeAdjustPolicy(QTableWidget.AdjustToContents)
+        table.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
+
+        lbl = QLabel("<b>LCC Summary</b>")
+        lbl.setContentsMargins(0, 12, 0, 4)
+
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.addWidget(lbl)
+        layout.addWidget(table)
+        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
+
+
+# ---------------------------------------------------------------------------
 # Public widget
 # ---------------------------------------------------------------------------
+
+class _ScrollForwarder(QObject):
+    """Forward wheel events from the canvas to the nearest parent QScrollArea."""
+
+    def eventFilter(self, obj, event):
+        if event.type() == QEvent.Wheel:
+            parent = obj.parent()
+            while parent is not None:
+                if isinstance(parent, QScrollArea):
+                    QApplication.sendEvent(parent.verticalScrollBar(), event)
+                    return True
+                parent = parent.parent()
+        return False
+
 
 class LCCChartWidget(QWidget):
     """
@@ -261,6 +426,9 @@ class LCCChartWidget(QWidget):
 
         self._canvas = FigureCanvasQTAgg(fig)
         self._canvas.setMinimumHeight(480)
+        self._canvas.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
+        self._scroll_forwarder = _ScrollForwarder(self)
+        self._canvas.installEventFilter(self._scroll_forwarder)
         toolbar = NavigationToolbar2QT(self._canvas, self)
 
         layout = QVBoxLayout(self)
@@ -268,6 +436,8 @@ class LCCChartWidget(QWidget):
         layout.setSpacing(0)
         layout.addWidget(toolbar)
         layout.addWidget(self._canvas)
+
+        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
 
         # ── Hover annotation ──────────────────────────────────────────────
         ax = fig.axes[0]
@@ -291,6 +461,10 @@ class LCCChartWidget(QWidget):
 
         self._canvas.mpl_connect("motion_notify_event", self._on_hover)
         self._canvas.mpl_connect("axes_leave_event",    self._on_leave)
+
+    def sizeHint(self):
+        # toolbar ≈ 36px + canvas minimum 480px
+        return QSize(super().sizeHint().width(), 520)
 
     # ── Hover handlers ────────────────────────────────────────────────────
 

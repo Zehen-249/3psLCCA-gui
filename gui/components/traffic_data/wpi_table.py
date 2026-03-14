@@ -245,7 +245,7 @@ class _WPITable(QTableWidget):
         return QSize(super().sizeHint().width(), h + 4)
 
     def minimumSizeHint(self):
-        return self.sizeHint()
+        return QSize(200, self.sizeHint().height())
 
     # ── Mode ──────────────────────────────────────────────────────────────────
 

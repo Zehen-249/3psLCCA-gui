@@ -8,6 +8,23 @@ from PySide6.QtWidgets import (
     QDialogButtonBox,
 )
 from PySide6.QtCore import Qt
+from PySide6.QtGui import QPalette
+
+
+def _combo_error_style(widget: QComboBox) -> str:
+    """Return a full QComboBox stylesheet that adds a red border while
+    preserving the widget's palette-based background and text colours.
+    Without explicit background-color, Qt's CSS renderer leaves it blank."""
+    p = widget.palette()
+    bg  = p.color(QPalette.Base).name()
+    fg  = p.color(QPalette.Text).name()
+    sel_bg = p.color(QPalette.Highlight).name()
+    sel_fg = p.color(QPalette.HighlightedText).name()
+    return (
+        f"QComboBox {{ border: 1.5px solid #e53e3e; background-color: {bg}; color: {fg}; }}"
+        f"QComboBox QAbstractItemView {{ background-color: {bg}; color: {fg};"
+        f" selection-background-color: {sel_bg}; selection-color: {sel_fg}; }}"
+    )
 
 from .utils.countries_data import CURRENCIES, COUNTRIES
 
@@ -31,6 +48,9 @@ class NewProjectDialog(QDialog):
         self.name_input = QLineEdit()
         self.name_input.setPlaceholderText("e.g. Highway 5 Bridge Replacement")
         self.name_input.setFixedHeight(34)
+        self.name_input.textChanged.connect(
+            lambda: self.name_input.setStyleSheet("") if self.name_input.text().strip() else None
+        )
         layout.addWidget(self.name_input)
 
         name_hint = QLabel("You can rename this later.")
@@ -47,6 +67,9 @@ class NewProjectDialog(QDialog):
         self.country_input.addItem("— Select country —", "")
         for country in COUNTRIES:
             self.country_input.addItem(country, country)
+        self.country_input.currentIndexChanged.connect(
+            lambda: self.country_input.setStyleSheet("") if self.country_input.currentData() else None
+        )
         layout.addWidget(self.country_input)
 
         country_hint = QLabel("Cannot be changed after project creation.")
@@ -63,6 +86,9 @@ class NewProjectDialog(QDialog):
         self.currency_input.addItem("— Select currency —", "")
         for code in CURRENCIES:
             self.currency_input.addItem(code, code)
+        self.currency_input.currentIndexChanged.connect(
+            lambda: self.currency_input.setStyleSheet("") if self.currency_input.currentData() else None
+        )
         layout.addWidget(self.currency_input)
 
         currency_hint = QLabel("Cannot be changed after project creation.")
@@ -84,10 +110,12 @@ class NewProjectDialog(QDialog):
         country_ok = bool(self.country_input.currentData())
         currency_ok = bool(self.currency_input.currentData())
 
-        self.name_input.setStyleSheet("" if name_ok else "border: 1px solid red;")
-        self.country_input.setStyleSheet("" if country_ok else "border: 1px solid red;")
+        self.name_input.setStyleSheet("" if name_ok else "border: 1.5px solid #e53e3e;")
+        self.country_input.setStyleSheet(
+            "" if country_ok else _combo_error_style(self.country_input)
+        )
         self.currency_input.setStyleSheet(
-            "" if currency_ok else "border: 1px solid red;"
+            "" if currency_ok else _combo_error_style(self.currency_input)
         )
 
         if name_ok and country_ok and currency_ok:

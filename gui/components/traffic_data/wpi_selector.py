@@ -211,53 +211,56 @@ class _WPISelector(QWidget):
     # ── UI construction ───────────────────────────────────────────────────────
 
     def _build_ui(self):
-        layout = QHBoxLayout(self)
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(6)
+        outer = QVBoxLayout(self)
+        outer.setContentsMargins(0, 0, 0, 0)
+        outer.setSpacing(4)
 
-        # Label
+        # ── Row 1: profile selector ───────────────────────────────────────
+        row1 = QHBoxLayout()
+        row1.setContentsMargins(0, 0, 0, 0)
+        row1.setSpacing(6)
+
         lbl = QLabel("WPI Profile:")
         lbl.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
-        layout.addWidget(lbl)
+        row1.addWidget(lbl)
 
-        # Combo
         self._combo = QComboBox()
         self._combo.setMinimumWidth(180)
         self._combo.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
         self._combo.currentIndexChanged.connect(self._on_combo_changed)
-        layout.addWidget(self._combo)
+        row1.addWidget(self._combo)
 
-        # Integrity badge
         self._badge = QLabel("—")
         self._badge.setFixedWidth(24)
         self._badge.setAlignment(Qt.AlignCenter)
         self._badge.setToolTip("")
-        layout.addWidget(self._badge)
+        row1.addWidget(self._badge)
 
-        # Buttons
         self._btn_new     = QPushButton("+ New")
         self._btn_save_as = QPushButton("✎ Save As")
         self._btn_delete  = QPushButton("🗑 Delete")
-
         for btn in (self._btn_new, self._btn_save_as, self._btn_delete):
             btn.setFixedHeight(28)
             btn.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
-            layout.addWidget(btn)
+            row1.addWidget(btn)
 
-        # Separator
-        sep = QLabel("|")
-        sep.setStyleSheet("color: #aaa; padding: 0 4px;")
-        layout.addWidget(sep)
+        row1.addStretch()
+        outer.addLayout(row1)
 
-        # Library buttons
+        # ── Row 2: library actions ────────────────────────────────────────
+        row2 = QHBoxLayout()
+        row2.setContentsMargins(0, 0, 0, 0)
+        row2.setSpacing(6)
+
         self._btn_save_lib   = QPushButton("⬆ Save to My Library")
         self._btn_import_lib = QPushButton("⬇ Import from Library")
         for btn in (self._btn_save_lib, self._btn_import_lib):
             btn.setFixedHeight(28)
             btn.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
-            layout.addWidget(btn)
+            row2.addWidget(btn)
 
-        layout.addStretch()
+        row2.addStretch()
+        outer.addLayout(row2)
 
         self._btn_new.clicked.connect(self._on_new)
         self._btn_save_as.clicked.connect(self._on_save_as)

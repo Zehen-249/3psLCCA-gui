@@ -114,9 +114,29 @@ class StructureManagerWidget(QWidget):
     def add_material(self, comp_name, values_dict, is_trash=False):
         now = datetime.datetime.now().isoformat()
 
-        included_carbon = values_dict.pop("_included_in_carbon_emission", True)
+        included_carbon   = values_dict.pop("_included_in_carbon_emission", True)
         included_recycling = values_dict.pop("_included_in_recyclability", True)
-        is_modified_by_user = values_dict.pop("_is_modified_by_user", False)
+        from_sor          = values_dict.pop("_from_sor", False)
+        sor_db_key        = values_dict.pop("_sor_db_key", "")
+        is_modified       = values_dict.pop("_is_modified_by_user", False)
+        is_excel          = values_dict.pop("_is_excel_import", False)
+        values_dict.pop("_is_customized", None)
+
+        # Compute source + source_db_key
+        if is_excel:
+            source = "excel"
+            source_db_key = ""
+        elif from_sor:
+            is_custom = sor_db_key.startswith("custom::")
+            clean_key = sor_db_key.removeprefix("custom::")
+            if is_custom:
+                source = "custom_db_modified" if is_modified else "custom_db"
+            else:
+                source = "db_modified" if is_modified else "db"
+            source_db_key = clean_key
+        else:
+            source = "manual"
+            source_db_key = ""
 
         new_entry = {
             "id": str(uuid.uuid4()),
@@ -124,10 +144,8 @@ class StructureManagerWidget(QWidget):
             "meta": {
                 "created_on": now,
                 "modified_on": now,
-                "is_user_defined": True,
-                "is_from_db": False,
-                "source_version": "1.0",
-                "is_modified_by_user": is_modified_by_user,
+                "source": source,
+                "source_db_key": source_db_key,
             },
             "state": {
                 "in_trash": is_trash,
@@ -196,16 +214,25 @@ class StructureManagerWidget(QWidget):
                 if dialog.exec():
                     new_values = dialog.get_values()
 
-                    included_carbon = new_values.pop("_included_in_carbon_emission", True)
+                    included_carbon    = new_values.pop("_included_in_carbon_emission", True)
                     included_recycling = new_values.pop("_included_in_recyclability", True)
-                    new_is_modified = new_values.pop("_is_modified_by_user", False)
+                    new_is_modified    = new_values.pop("_is_modified_by_user", False)
+                    new_values.pop("_from_sor", None)
+                    new_values.pop("_sor_db_key", None)
+                    new_values.pop("_is_customized", None)
+                    new_values.pop("_is_excel_import", None)
+
+                    # Upgrade source if user edited a DB-sourced material
+                    current_source = item_to_edit["meta"].get("source", "manual")
+                    if new_is_modified:
+                        if current_source == "db":
+                            current_source = "db_modified"
+                        elif current_source == "custom_db":
+                            current_source = "custom_db_modified"
 
                     item_to_edit["values"] = new_values
                     item_to_edit["meta"]["modified_on"] = datetime.datetime.now().isoformat()
-                    item_to_edit["meta"]["is_modified_by_user"] = (
-                        item_to_edit["meta"].get("is_modified_by_user", False)
-                        or new_is_modified
-                    )
+                    item_to_edit["meta"]["source"] = current_source
                     item_to_edit["state"]["included_in_carbon_emission"] = included_carbon
                     item_to_edit["state"]["included_in_recyclability"] = included_recycling
 

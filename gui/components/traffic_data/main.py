@@ -200,14 +200,8 @@ TRAFFIC_FIELDS = [
         "Road Roughness",
         "",
         "float",
-        (0.01, 99_999.0, 2),
+        (2000, 1_00_000.0, 0),
         unit="(mm/km)",
-        required=True,
-        warn=(
-            0.01,
-            10000.0,
-            "Road Roughness is unusually low or high — please verify the value",
-        ),
     ),
     FieldDef(
         "road_rise_m_per_km",

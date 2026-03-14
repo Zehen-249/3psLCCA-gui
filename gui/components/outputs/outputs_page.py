@@ -4,11 +4,11 @@ gui/components/outputs/outputs_page.py
 
 from PySide6.QtWidgets import (
     QApplication,
+    QFileDialog,
     QGroupBox,
     QHBoxLayout,
     QLabel,
     QPushButton,
-    QSizePolicy,
     QTextEdit,
     QVBoxLayout,
     QWidget,
@@ -185,6 +185,8 @@ class OutputsPage(ScrollableForm):
             results = run_full_lcc_analysis(
                 data_object, life_cycle_construction_cost_breakdown, wpi=wpi_metadata, debug=False
             )
+            self._last_all_data = all_data
+            self._last_lcc_breakdown = life_cycle_construction_cost_breakdown
             self._show_calculation_success(results)
 
         except Exception as e:
@@ -257,12 +259,22 @@ class OutputsPage(ScrollableForm):
         pprint(results)
         print("==========================================")
 
+        self._last_results = results
         self._clear_status()
 
-        # ── Success banner ─────────────────────────────────────────────────
+        # ── Success banner + Download button ───────────────────────────────
         banner = QGroupBox()
         banner.setStyleSheet("QGroupBox { border: 2px solid #198754; padding: 8px; }")
-        QVBoxLayout(banner).addWidget(QLabel("✅  Calculation completed successfully."))
+        banner_row = QHBoxLayout(banner)
+        banner_row.addWidget(QLabel("✅  Calculation completed successfully."), stretch=1)
+
+        dl_btn = QPushButton("⬇  Export Report (.3psLCCA)")
+        dl_btn.setFixedHeight(30)
+        dl_btn.setFixedWidth(210)
+        dl_btn.setToolTip("Export all inputs and LCC results as a .3psLCCA file")
+        dl_btn.clicked.connect(self._download_report)
+        banner_row.addWidget(dl_btn)
+
         self._status_layout.addWidget(banner)
 
         # ── Warnings ───────────────────────────────────────────────────────
@@ -274,9 +286,11 @@ class OutputsPage(ScrollableForm):
 
         # ── Chart ──────────────────────────────────────────────────────────
         try:
-            from .lcc_plot import LCCChartWidget
+            from .lcc_plot import LCCChartWidget, LCCDetailsTable
             chart = LCCChartWidget(results)
             self._status_layout.addWidget(chart)
+            table = LCCDetailsTable(results)
+            self._status_layout.addWidget(table)
         except Exception as e:
             err = QLabel(f"Chart error: {e}")
             err.setStyleSheet("color: gray; font-style: italic;")
@@ -488,44 +502,44 @@ class OutputsPage(ScrollableForm):
             _emission_factors = data.get("carbon_emission_data").get("diversion_emissions").get("emission_factors")
 
             small_cars    = VehicleMetaData(
-                                int(_traffic_vehicle_data.get("small_cars").get("vehicles_per_day")), 
-                                float(_emission_factors.get("small_cars")), 
+                                int(_traffic_vehicle_data.get("small_cars").get("vehicles_per_day")),
+                                float(_emission_factors.get("small_cars")),
                                 float(_traffic_vehicle_data.get("small_cars").get("accident_percentage"))
                             )
             big_cars      = VehicleMetaData(
-                                int(_traffic_vehicle_data.get("big_cars").get("vehicles_per_day")), 
-                                float(_emission_factors.get("big_cars")), 
+                                int(_traffic_vehicle_data.get("big_cars").get("vehicles_per_day")),
+                                float(_emission_factors.get("big_cars")),
                                 float(_traffic_vehicle_data.get("big_cars").get("accident_percentage"))
                             )
             two_wheelers  = VehicleMetaData(
-                                int(_traffic_vehicle_data.get("two_wheelers").get("vehicles_per_day")), 
-                                float(_emission_factors.get("two_wheelers")), 
+                                int(_traffic_vehicle_data.get("two_wheelers").get("vehicles_per_day")),
+                                float(_emission_factors.get("two_wheelers")),
                                 float(_traffic_vehicle_data.get("two_wheelers").get("accident_percentage"))
                             )
             o_buses       = VehicleMetaData(
-                                int(_traffic_vehicle_data.get("o_buses").get("vehicles_per_day")), 
-                                float(_emission_factors.get("o_buses")), 
+                                int(_traffic_vehicle_data.get("o_buses").get("vehicles_per_day")),
+                                float(_emission_factors.get("o_buses")),
                                 float(_traffic_vehicle_data.get("o_buses").get("accident_percentage"))
                             )
             d_buses       = VehicleMetaData(
-                                int(_traffic_vehicle_data.get("d_buses").get("vehicles_per_day")), 
-                                float(_emission_factors.get("d_buses")), 
+                                int(_traffic_vehicle_data.get("d_buses").get("vehicles_per_day")),
+                                float(_emission_factors.get("d_buses")),
                                 float(_traffic_vehicle_data.get("d_buses").get("accident_percentage"))
                             )
             lcv           = VehicleMetaData(
-                                int(_traffic_vehicle_data.get("lcv").get("vehicles_per_day")), 
-                                float(_emission_factors.get("lcv")), 
+                                int(_traffic_vehicle_data.get("lcv").get("vehicles_per_day")),
+                                float(_emission_factors.get("lcv")),
                                 float(_traffic_vehicle_data.get("lcv").get("accident_percentage"))
                             )
             hcv           = VehicleMetaData(
-                                int(_traffic_vehicle_data.get("hcv").get("vehicles_per_day")), 
-                                float(_emission_factors.get("hcv")), 
+                                int(_traffic_vehicle_data.get("hcv").get("vehicles_per_day")),
+                                float(_emission_factors.get("hcv")),
                                 float(_traffic_vehicle_data.get("hcv").get("accident_percentage")),
                                 pwr=float(_traffic_vehicle_data.get("hcv").get("pwr"))
                             )
             mcv           = VehicleMetaData(
-                                int(_traffic_vehicle_data.get("mcv").get("vehicles_per_day")), 
-                                float(_emission_factors.get("mcv")), 
+                                int(_traffic_vehicle_data.get("mcv").get("vehicles_per_day")),
+                                float(_emission_factors.get("mcv")),
                                 float(_traffic_vehicle_data.get("mcv").get("accident_percentage")),
                                 pwr=float(_traffic_vehicle_data.get("mcv").get("pwr"))
                             )
@@ -607,6 +621,100 @@ class OutputsPage(ScrollableForm):
         
         return use_global_road_user_calculations, object
     #===================================================================================
+
+    # ── Report download ───────────────────────────────────────────────────────
+
+    def _download_report(self):
+        path, _ = QFileDialog.getSaveFileName(
+            self, "Save Report", "LCC_Report.3psLCCA", "3psLCCA Files (*.3psLCCA)"
+        )
+        if not path:
+            return
+        # Ensure correct extension even if user typed something else
+        if not path.endswith(".3psLCCA"):
+            path += ".3psLCCA"
+        try:
+            import json
+            export = self._build_export_dict(
+                getattr(self, "_last_all_data", {}),
+                getattr(self, "_last_lcc_breakdown", {}),
+                getattr(self, "_last_results", {}),
+            )
+            with open(path, "w", encoding="utf-8") as f:
+                json.dump(export, f, indent=2, ensure_ascii=False)
+            from PySide6.QtWidgets import QMessageBox
+            QMessageBox.information(self, "Saved", f"Report saved to:\n{path}")
+        except Exception as e:
+            import traceback
+            from PySide6.QtWidgets import QMessageBox
+            QMessageBox.critical(self, "Export Failed", f"{type(e).__name__}: {e}\n\n{traceback.format_exc(limit=4)}")
+
+    def _build_export_dict(self, all_data: dict, lcc_breakdown: dict, results: dict) -> dict:
+        """
+        Build the full export dict written to a .3psLCCA file.
+
+        Structure
+        ---------
+        {
+          "format":      "3psLCCA",
+          "version":     "1.0",
+          "exported_at": "<ISO timestamp>",
+          "inputs": {
+            "construction_work_data": { ... },  # includes grand_total, page/component/item totals
+            "carbon_emission_data":   { ... },  # includes total_kgCO2e per sub-section
+            "recycling_data":         { ... },  # includes total_recovered_value, cat_totals
+            "traffic_and_road_data":  { ... },
+            "financial_data":         { ... },
+            "bridge_data":            { ... },
+            "maintenance_data":       { ... },
+            "demolition_data":        { ... },
+          },
+          "computed": {
+            "initial_construction_cost":       <float>,
+            "initial_carbon_emissions_cost":   <float>,
+            "superstructure_construction_cost":<float>,
+            "total_scrap_value":               <float>,
+          },
+          "results": { ... }   # direct output of run_full_lcc_analysis
+        }
+
+        All values are sanitised to JSON-safe primitives.
+        """
+        import datetime
+
+        def _sanitize(obj):
+            """Recursively coerce non-JSON-serialisable values to primitives."""
+            if obj is None or isinstance(obj, (bool, str)):
+                return obj
+            if isinstance(obj, float):
+                return float(obj)
+            if isinstance(obj, int):
+                return int(obj)
+            if isinstance(obj, dict):
+                return {str(k): _sanitize(v) for k, v in obj.items()}
+            if isinstance(obj, (list, tuple)):
+                return [_sanitize(i) for i in obj]
+            # dataclass / namedtuple / custom objects
+            try:
+                from dataclasses import asdict, fields
+                fields(obj)
+                return _sanitize(asdict(obj))
+            except TypeError:
+                pass
+            try:
+                return _sanitize(obj._asdict())
+            except AttributeError:
+                pass
+            return str(obj)
+
+        return {
+            "format":      "3psLCCA",
+            "version":     "1.0",
+            "exported_at": datetime.datetime.now().isoformat(),
+            "inputs":      _sanitize(all_data),
+            "computed":    _sanitize(lcc_breakdown),
+            "results":     _sanitize(results),
+        }
 
     def _on_proceed(self):
         self.run_calculation()
