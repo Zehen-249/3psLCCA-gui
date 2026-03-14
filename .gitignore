@@ -6,7 +6,7 @@ user_projects/
 # ─────────────────────────────────────────────
 # 3psLCCA Core (installed from GitHub, not local)
 # ─────────────────────────────────────────────
-# 3psLCCA-core/
+3psLCCA-core/
 *.xlsx
 # ─────────────────────────────────────────────
 # Python
