@@ -1,11 +1,11 @@
 site_name: 3PS LCCA
+use_directory_urls: false
 theme:
   name: material
   palette:
     primary: "indigo"
     accent: "cyan"
   features:
-    - navigation.instant
     - navigation.tabs
     - navigation.sections
     - navigation.expand
