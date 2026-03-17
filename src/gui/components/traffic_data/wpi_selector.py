@@ -4,7 +4,7 @@ gui/components/traffic_data/wpi_selector.py
 _WPISelector — profile selector bar for WPI adjustment ratio profiles.
 
 Layout:
-    [Profile: ▾ combo] [✅/⚠/❌] [+ New] [✎ Save As] [🗑 Delete]
+    Profile: ▾ combo | status badge (✅/⚠/❌) | + New | Save As | 🗑 Delete
 
 Signals:
     profile_selected(WPIProfile)   — user picked a profile from combo

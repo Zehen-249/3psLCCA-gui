@@ -1,0 +1,57 @@
+site_name: 3PS LCCA
+theme:
+  name: material
+  palette:
+    primary: "indigo"
+    accent: "cyan"
+  features:
+    - navigation.instant
+    - navigation.tabs
+    - navigation.sections
+    - navigation.expand
+    - content.code.copy
+    - toc.integrate
+
+nav:
+  - Home: index.md
+  - API Reference:
+      - Overview: api/index.md
+      - Combined API: api/guide.md
+  - User Guide:
+      - Overview: user-guide/index.md
+      - Combined Guide: user-guide/guide.md
+
+plugins:
+  - search
+  - gen-files:
+      scripts:
+        - gen_markdown_docs.py
+
+  - mkdocstrings:
+      handlers:
+        python:
+          paths: ["../src"]
+          options:
+            show_source: true
+            show_signature: true
+            show_signature_annotations: true
+            show_root_heading: true
+            show_symbol_type_heading: true
+            show_symbol_type_toc: true
+            members_order: source
+            separate_signature: true
+            line_length: 80
+            docstring_style: google
+            merge_init_into_class: true
+            show_if_no_docstring: false
+            filters:
+              - "!^_"
+              - "^__init__$"
+
+markdown_extensions:
+  - toc:
+      permalink: true
+  - admonition
+  - pymdownx.highlight
+  - pymdownx.superfences
+  - pymdownx.details
