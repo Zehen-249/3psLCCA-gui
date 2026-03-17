@@ -183,7 +183,7 @@ class OutputsPage(ScrollableForm):
 
             from three_ps_lcca_core.core.main import run_full_lcc_analysis
             results = run_full_lcc_analysis(
-                data_object, life_cycle_construction_cost_breakdown, wpi=wpi_metadata, debug=False
+                data_object, life_cycle_construction_cost_breakdown, wpi=wpi_metadata, debug=True
             )
             self._last_all_data = all_data
             self._last_lcc_breakdown = life_cycle_construction_cost_breakdown
@@ -323,7 +323,20 @@ class OutputsPage(ScrollableForm):
                 }
         """
         carbon_emissions  = data.get("carbon_emission_data")
-        carbon_cost_per_kg = carbon_emissions.get("social_cost_data").get("result").get("cost_of_carbon_local")  # INR/kgCO₂e
+        carbon_cost_per_kg = carbon_emissions.get("social_cost_data").get("result").get("cost_of_carbon_local")
+
+        diversion = carbon_emissions.get("diversion_emissions", {})
+        if diversion.get("mode") == "Calculate by Vehicle":
+            diversion_kgCO2e_per_day = float(diversion.get("total_calculated_emissions", 0.0))
+        else:
+            diversion_kgCO2e_per_day = float(diversion.get("total_direct_emissions", 0.0))
+
+        _bridge = data.get("bridge_data", {})
+        construction_days = (
+            float(_bridge.get("duration_construction_months", 0))
+            * float(_bridge.get("days_per_month", 30))
+        )
+        diversion_kgCO2e_total = diversion_kgCO2e_per_day * construction_days
 
         total_kgCO2e = (
               float(carbon_emissions.get("material_emissions_data").get("total_kgCO2e"))    # Embodied carbon of materials used

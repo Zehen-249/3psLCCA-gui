@@ -100,7 +100,9 @@ def _make_upload_img_widget(
     file_layout.setSpacing(6)
 
     # Hidden QLineEdit stores the base64-encoded image for save/load.
+    # Base64 images can be hundreds of KB — raise the default 32767-char cap.
     logo_input = QLineEdit()
+    logo_input.setMaxLength(10_000_000)
     logo_input.setReadOnly(True)
     logo_input.hide()
 
@@ -143,7 +145,6 @@ def _make_upload_img_widget(
         scaled = pixmap.scaled(
             120, 120, Qt.KeepAspectRatio, Qt.SmoothTransformation)
         _preview.setPixmap(scaled)
-        _preview.setText("")
 
         _input.setText(base64.b64encode(img_bytes).decode("utf-8"))
         host._on_field_changed()
@@ -382,7 +383,6 @@ def build_form(
                     120, 120, Qt.KeepAspectRatio, Qt.SmoothTransformation
                 )
                 preview.setPixmap(scaled)
-                preview.setText("")
             except Exception:
                 preview.setPixmap(QPixmap())
                 preview.setText("No image selected")

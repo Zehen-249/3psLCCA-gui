@@ -54,10 +54,10 @@ DIRECT_FIELDS = [
     FieldDef(
         "total_direct_emissions",
         "Total Diversion Emissions",
-        "Enter the total carbon emissions from traffic diversion directly.",
+        "Enter the total carbon emissions from traffic diversion per day of construction.",
         "float",
         (0.0, 1e12, 4),
-        unit="kgCO₂e",
+        unit="kgCO₂e/day",
     ),
 ]
 
@@ -517,8 +517,8 @@ class TrafficEmissions(ScrollableForm):
         else:
             if data.get("total_direct_emissions", 0.0) == 0.0:
                 warnings.append(
-                    "Total direct diversion emissions is 0 kgCO₂e — "
-                    "enter the total emission value in the field."
+                    "Total direct diversion emissions is 0 kgCO₂e/day — "
+                    "enter the per-day emission value in the field."
                 )
         return {"errors": [], "warnings": warnings}
 

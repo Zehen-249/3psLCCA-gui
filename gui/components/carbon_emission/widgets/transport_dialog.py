@@ -219,6 +219,15 @@ class TransportDialog(QDialog):
         mat_title.setStyleSheet("font-weight: bold;")
         mat_hdr.addWidget(mat_title)
         mat_hdr.addStretch()
+        self.select_all_btn = QPushButton("Select All")
+        self.select_all_btn.setFlat(True)
+        self.select_all_btn.setCursor(Qt.PointingHandCursor)
+        self.select_all_btn.setStyleSheet(
+            "QPushButton { color: #0066cc; font-size: 11px; border: none; padding: 0 4px; }"
+            "QPushButton:hover { color: #004499; text-decoration: underline; }"
+        )
+        self.select_all_btn.clicked.connect(self._select_all_valid)
+        mat_hdr.addWidget(self.select_all_btn)
         self.hide_assigned_chk = QCheckBox("Hide assigned")
         self.hide_assigned_chk.toggled.connect(self._on_hide_assigned)
         mat_hdr.addWidget(self.hide_assigned_chk)
@@ -396,12 +405,21 @@ class TransportDialog(QDialog):
                     is_mass    = UNIT_DIMENSION.get(unit.lower()) == "Mass"
                     is_assigned = mat_uuid in self.assigned_uuids
 
+                    kg_from_carbon = False
                     if mat_uuid in saved_kg:
                         kg_factor = saved_kg[mat_uuid]
                     elif is_mass and stored_usi is not None:
                         kg_factor = float(stored_usi)
                     elif v.get("transport_kg_factor"):
                         kg_factor = float(v["transport_kg_factor"])
+                    elif (
+                        v.get("conversion_factor")
+                        and len(_cu := v.get("carbon_unit", "").split("/", 1)) == 2
+                        and _cu[0].lower().replace("₂", "2") in ("kgco2e", "kgco2")
+                        and _cu[1].lower() == "kg"
+                    ):
+                        kg_factor = float(v["conversion_factor"])
+                        kg_from_carbon = True
                     else:
                         kg_factor = 0.0
 
@@ -477,15 +495,20 @@ class TransportDialog(QDialog):
                         fi.setToolTip("Auto-calculated from unit definition")
                         self.mat_table.setItem(row, 5, fi)
                     else:
-                        saved_val = saved_kg.get(mat_uuid, 0.0)
-                        edit = QLineEdit("" if saved_val <= 0 else f"{saved_val:g}")
+                        prefill = saved_kg.get(mat_uuid, kg_factor)
+                        edit = QLineEdit("" if prefill <= 0 else f"{prefill:g}")
                         edit.setPlaceholderText("kg per unit")
                         edit.setValidator(QDoubleValidator(0, 1e9, 4))
+                        if kg_from_carbon:
+                            edit.setToolTip(
+                                "Pre-filled from carbon emission data "
+                                "(carbon denominator is kg — same conversion applies)"
+                            )
                         edit.textChanged.connect(
                             lambda t, r=row, q=qty: self._on_factor_changed(t, r, q)
                         )
                         sort_item = QTableWidgetItem()
-                        sort_item.setData(Qt.UserRole, saved_val)
+                        sort_item.setData(Qt.UserRole, prefill)
                         self.mat_table.setItem(row, 5, sort_item)
                         self.mat_table.setCellWidget(row, 5, edit)
 
@@ -541,6 +564,20 @@ class TransportDialog(QDialog):
     def _on_hide_assigned(self, checked: bool):
         self._hide_assigned = checked
         self._on_search(self.search_in.text())
+
+    def _select_all_valid(self):
+        """Check all unassigned materials that are not already checked."""
+        for row in range(self.mat_table.rowCount()):
+            if row >= len(self._rows_metadata):
+                continue
+            if self._rows_metadata[row].get("is_assigned"):
+                continue
+            chk_w = self.mat_table.cellWidget(row, 0)
+            if chk_w is None:
+                continue
+            chk = chk_w.layout().itemAt(0).widget()
+            if isinstance(chk, QCheckBox) and not chk.isChecked():
+                chk.setChecked(True)
 
     def _refresh_mat_count(self):
         visible = sum(

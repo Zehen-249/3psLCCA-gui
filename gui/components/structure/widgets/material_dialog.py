@@ -669,6 +669,7 @@ def _migrate_embedded_custom_units(values: dict) -> None:
 
 class MaterialDialog(QDialog):
     _CUSTOM_CODE = "__custom__"
+    _NO_SUGGESTIONS_CODE = "__no_suggestions__"
 
     def __init__(self, comp_name: str, parent=None, data: dict = None,
                  emissions_only: bool = False, recyclability_only: bool = False,
@@ -743,6 +744,7 @@ class MaterialDialog(QDialog):
                 self.sor_cb.addItem("All databases", None)
             for opt in self._sor_options:
                 self.sor_cb.addItem(opt["label"], opt["db_key"])
+            self.sor_cb.addItem("— No suggestions —", self._NO_SUGGESTIONS_CODE)
             sor_row.addWidget(self.sor_cb, stretch=1)
             root.addLayout(sor_row)
 
@@ -773,11 +775,15 @@ class MaterialDialog(QDialog):
         # ── Completer ─────────────────────────────────────────────────────
         self._suggestions = {}
         self._active_completer = None
+        self._skip_suggestions = False
         self._ui_ready = False
+        self._user_edited_snapshot = {}   # saved when user unchecks "Allow editing"
         self._reload_suggestions()
         self.name_in.textChanged.connect(self._on_name_search_changed)
         if self.sor_cb:
             self.sor_cb.currentIndexChanged.connect(self._on_sor_changed)
+
+        self._skip_btn = None
 
         # ── Allow-edit checkbox ───────────────────────────────────────────
         self._allow_edit_chk = QCheckBox("Allow editing DB-filled values")
@@ -1208,7 +1214,7 @@ class MaterialDialog(QDialog):
         # Exact match → selection just happened; autofill and stop.
         # Guard with _ui_ready so this doesn't fire during __init__ before
         # all widgets (unit_in, carbon_em_in, etc.) have been created.
-        if q in self._suggestions:
+        if q in self._suggestions and not self._skip_suggestions:
             if self._ui_ready:
                 self._on_suggestion_selected(q)
             return
@@ -1247,6 +1253,7 @@ class MaterialDialog(QDialog):
         self._sor_item = None
         self._sor_filled_name = None
         self._is_customized = False
+        self._user_edited_snapshot = {}
         self._lock_autofilled_fields(False)
         self._allow_edit_chk.blockSignals(True)
         self._allow_edit_chk.setChecked(False)
@@ -1282,13 +1289,35 @@ class MaterialDialog(QDialog):
         self.type_filter_cb.blockSignals(False)
 
     def _on_sor_changed(self):
+        if self.sor_cb and self.sor_cb.currentData() == self._NO_SUGGESTIONS_CODE:
+            if self.type_filter_cb is not None:
+                self.type_filter_cb.setEnabled(False)
+            self._on_skip_suggestion()
+            return
         if self.type_filter_cb is not None:
+            self.type_filter_cb.setEnabled(True)
             current_type = self.type_filter_cb.currentData()
             self._populate_type_filter(preselect=current_type or self._comp_name)
-        self._reload_suggestions()
+        self._restore_suggestions()
 
     def _on_type_filter_changed(self):
+        self._restore_suggestions()
+
+    def _restore_suggestions(self):
+        """Re-enable the suggestion system (called when the user switches database/type filter)."""
+        self._skip_suggestions = False
         self._reload_suggestions()
+        if self._skip_btn is not None:
+            self._skip_btn.setVisible(True)
+
+    def _on_skip_suggestion(self):
+        """User chose to enter all fields manually — bypass the suggestion system."""
+        self._skip_suggestions = True
+        self._reset_sor_state()
+        self.name_in.setCompleter(None)
+        self._active_completer = None
+        if self._skip_btn is not None:
+            self._skip_btn.setVisible(False)
 
     def _lock_autofilled_fields(self, lock: bool):
         # qty_in is always freely editable; everything else is DB-filled.
@@ -1303,17 +1332,46 @@ class MaterialDialog(QDialog):
     def _on_allow_edit_toggled(self, checked: bool):
         """Unlock autofilled fields when checked; restore values and re-lock when unchecked."""
         if checked:
-            # User is declaring this as custom — enable carbon checkbox so they can include it
-            self._pre_allow_edit_source = self.src_in.text()
-            self._pre_allow_edit_carbon_src = self.carbon_src_in.text()
-            self._sor_filling = True
-            self.src_in.clear()
-            self.carbon_src_in.clear()
-            self._sor_filling = False
+            if self._user_edited_snapshot:
+                # Restore previously saved user edits instead of blanking the fields
+                self._sor_filling = True
+                try:
+                    snap = self._user_edited_snapshot
+                    self.rate_in.setText(snap.get('rate', ''))
+                    if snap.get('unit_idx', -1) >= 0:
+                        self.unit_in.setCurrentIndex(snap['unit_idx'])
+                    self.src_in.setText(snap.get('src', ''))
+                    self.carbon_em_in.setText(snap.get('carbon_em', ''))
+                    if snap.get('carbon_denom_idx', -1) >= 0:
+                        self.carbon_denom_cb.setCurrentIndex(snap['carbon_denom_idx'])
+                    self.carbon_src_in.setText(snap.get('carbon_src', ''))
+                    self.conv_factor_in.setText(snap.get('conv_factor', ''))
+                    self.carbon_chk.setChecked(snap.get('carbon_chk', False))
+                    self.recycle_chk.setChecked(snap.get('recycle_chk', False))
+                finally:
+                    self._sor_filling = False
+            else:
+                # First time allowing edit — only clear source attribution fields
+                self._sor_filling = True
+                self.src_in.clear()
+                self.carbon_src_in.clear()
+                self._sor_filling = False
             self._is_modified_by_user = True
             self.carbon_chk.setEnabled(True)
         else:
             if self._sor_item is not None:
+                # Snapshot all current user-edited values before overwriting with DB values
+                self._user_edited_snapshot = {
+                    'rate':             self.rate_in.text(),
+                    'unit_idx':         self.unit_in.currentIndex(),
+                    'src':              self.src_in.text(),
+                    'carbon_em':        self.carbon_em_in.text(),
+                    'carbon_denom_idx': self.carbon_denom_cb.currentIndex(),
+                    'carbon_src':       self.carbon_src_in.text(),
+                    'conv_factor':      self.conv_factor_in.text(),
+                    'carbon_chk':       self.carbon_chk.isChecked(),
+                    'recycle_chk':      self.recycle_chk.isChecked(),
+                }
                 # Restore all values from the DB suggestion that was selected
                 self._sor_filling = True
                 try:
@@ -1419,6 +1477,8 @@ class MaterialDialog(QDialog):
         if not item:
             return
 
+        # New suggestion — discard any snapshot from a previous suggestion's edit session
+        self._user_edited_snapshot = {}
         self._sor_filling = True
         try:
             unit = item.get('unit', '')

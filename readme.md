@@ -1,67 +1,66 @@
-# 3psLCCA — Installation Guide
+# 3psLCCA — Life Cycle Cost Analysis for Bridge Projects
+
+A desktop application built with Python and PySide6 for performing Life Cycle Cost Analysis (LCCA) on bridge infrastructure projects.
+
+---
 
 ## Requirements
 
 - Python >= 3.12
+- Git
 
 ---
 
-## Setup
+## Installation
 
-### 1. Create and activate a virtual environment
-
-```bash
-python -m venv venv
-```
-
-**Windows:**
-```bash
-venv\Scripts\activate
-```
-
-**macOS / Linux:**
-```bash
-source venv/bin/activate
-```
-
----
-
-### 2. Clone the repository
+**1. Clone the repository**
 
 ```bash
 git clone -b master-con https://github.com/swas02/3psLCCA-gui.git
 cd 3psLCCA-gui
 ```
 
----
-
-### 3. Clone the core engine
+**2. Clone the core engine inside the project root**
 
 ```bash
 git clone https://github.com/swas02/3psLCCA-core.git
 ```
 
-This places `3psLCCA-core/` inside the project root, where `requirements.txt` expects it.
+This places `3psLCCA-core/` inside `3psLCCA-gui/`, which is where `requirements.txt` expects it.
 
----
+**3. Create and activate a virtual environment**
 
-### 4. Install dependencies
+```bash
+python -m venv venv
+```
+
+Windows:
+```bash
+venv\Scripts\activate
+```
+
+macOS / Linux:
+```bash
+source venv/bin/activate
+```
+
+**4. Install dependencies**
 
 ```bash
 pip install -r requirements.txt
 ```
 
-This installs all packages including `3psLCCA-core` as a local editable install.
-
 ---
 
-### 5. Run the application
+## Running the Application
+
+Make sure your virtual environment is activated, then run from the project root (the folder containing `gui/`):
 
 ```bash
 python -m gui.main
 ```
 
-> Run all commands from the project root — the folder containing `gui/`.
+> The app must be launched from the project root. It loads assets (stylesheet, icons) using paths relative to that directory — running it from any other location will cause missing resource warnings.
 
 ---
 
@@ -71,10 +70,15 @@ python -m gui.main
 3psLCCA-gui/
 ├── 3psLCCA-core/       # Core LCCA engine (cloned separately)
 ├── gui/
-│   └── main.py
+│   ├── main.py         # Application entry point
+│   ├── components/     # UI components
+│   ├── assets/         # Icons and resources
+│   ├── project_controller.py
+│   ├── project_manager.py
+│   └── project_window.py
 ├── core/
 ├── data/
 ├── scripts/
-├── user_projects/
-└── requirements.txt
+├── user_projects/      # Saved LCCA project files
+└── requirements.txt    # pip dependencies
 ```
