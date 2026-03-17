@@ -254,10 +254,6 @@ class OutputsPage(ScrollableForm):
         self._status_layout.addStretch()
 
     def _show_calculation_success(self, results):
-        from pprint import pprint
-        print("=========LCC RESULTS=====================")
-        pprint(results)
-        print("==========================================")
 
         self._last_results = results
         self._clear_status()
@@ -336,7 +332,6 @@ class OutputsPage(ScrollableForm):
             float(_bridge.get("duration_construction_months", 0))
             * float(_bridge.get("days_per_month", 30))
         )
-        diversion_kgCO2e_total = diversion_kgCO2e_per_day * construction_days
 
         total_kgCO2e = (
               float(carbon_emissions.get("material_emissions_data").get("total_kgCO2e"))    # Embodied carbon of materials used
@@ -408,9 +403,12 @@ class OutputsPage(ScrollableForm):
         interest_rate_percent             = float(_financial_data.get("interest_rate"))
         investment_ratio                  = float(_financial_data.get("investment_ratio"))
 
-        _niti = data.get("carbon_emission_data").get("social_cost_data").get("niti")
-        social_cost_of_carbon_per_mtco2e  = float(_niti.get("cost_local"))
-        currency_conversion               = float(_niti.get("inr_to_local_rate"))
+        # cost_of_carbon_local is in local_currency/kgCO2e (user-selected source).
+        # The engine expects social_cost_of_carbon_per_mtco2e in local_currency/mtCO2e,
+        # so multiply by 1000. currency_conversion is 1.0 — cost is already in local currency.
+        _result = data.get("carbon_emission_data").get("social_cost_data").get("result")
+        social_cost_of_carbon_per_mtco2e  = float(_result.get("cost_of_carbon_local")) * 1000
+        currency_conversion               = 1.0
 
         _bridge_data = data.get("bridge_data")
         service_life_years                = int(_bridge_data.get("design_life"))

@@ -16,16 +16,12 @@ from PySide6.QtGui import QColor
 import datetime
 
 from ...utils.unit_resolver import analyze_conversion_sympy
-
-_UNIT_DISPLAY = {
-    "m2": "m²", "m3": "m³", "sqm": "m²", "cum": "m³",
-    "sqft": "sq.ft", "sqyd": "sq.yd",
-}
+from ...utils.definitions import UNIT_DISPLAY
 
 
 def _fmt_unit(code: str) -> str:
     """Convert raw unit code to display symbol."""
-    return _UNIT_DISPLAY.get(code.lower(), code) if code else code
+    return UNIT_DISPLAY.get(code.lower(), code) if code else code
 
 
 def _fmt_carbon_unit(carbon_unit: str) -> str:

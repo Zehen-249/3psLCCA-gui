@@ -34,6 +34,7 @@ from ...utils.definitions import (
     UNIT_TO_SI,
     UNIT_DIMENSION,
     SI_BASE_UNITS,
+    UNIT_DISPLAY,
 )
 from ...utils.unit_resolver import get_custom_units, load_custom_units
 from ...utils.input_fields.add_material import FIELD_DEFINITIONS, BASE_DOCS_URL
@@ -379,16 +380,6 @@ _SOR_UNIT_ALIASES: dict[str, str] = {
     "t":   "tonne",
 }
 
-# Pretty display symbols for unit codes used in labels and formula previews.
-_UNIT_DISPLAY_SYMS: dict[str, str] = {
-    "m2":   "m²",
-    "m3":   "m³",
-    "sqm":  "m²",
-    "cum":  "m³",
-    "sqft": "sq.ft",
-    "sqyd": "sq.yd",
-}
-
 def _unit_sym(code: str) -> str:
     """
     Return the pretty display symbol for a unit code.
@@ -398,16 +389,15 @@ def _unit_sym(code: str) -> str:
     if not code:
         return "unit"
 
-    # Remove unwanted spaces
     code = code.replace(" ", "").strip()
 
-    if code in _UNIT_DISPLAY_SYMS:
-        return _UNIT_DISPLAY_SYMS[code]
+    if code in UNIT_DISPLAY:
+        return UNIT_DISPLAY[code]
 
     # Compound unit — prettify each part separated by '-'
     parts = code.split("-")
     if len(parts) > 1:
-        return "-".join(_UNIT_DISPLAY_SYMS.get(p, p) for p in parts)
+        return "-".join(UNIT_DISPLAY.get(p, p) for p in parts)
 
     return code
 
@@ -1556,7 +1546,7 @@ class MaterialDialog(QDialog):
             for code, info in units.items():
                 si_val = UNIT_TO_SI.get(code)
                 si_unit_code = SI_BASE_UNITS.get(dim, "")
-                sym = _unit_sym(code) if code in _UNIT_DISPLAY_SYMS else info["name"].split(",")[0].strip()
+                sym = _unit_sym(code) if code in UNIT_DISPLAY else info["name"].split(",")[0].strip()
                 si_sym = _unit_sym(si_unit_code)
                 short_name = info["name"].split(",")[-1].strip()
                 item = QStandardItem(f"{sym} — {short_name}")

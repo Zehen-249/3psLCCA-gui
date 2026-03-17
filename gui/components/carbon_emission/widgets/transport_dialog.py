@@ -11,7 +11,7 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QColor, QDoubleValidator, QFont
 
-from ...utils.definitions import STRUCTURE_CHUNKS, UNIT_DIMENSION
+from ...utils.definitions import STRUCTURE_CHUNKS, UNIT_DIMENSION, UNIT_DISPLAY
 
 # ---------------------------------------------------------------------------
 # Vehicle class data
@@ -219,30 +219,36 @@ class TransportDialog(QDialog):
         mat_title.setStyleSheet("font-weight: bold;")
         mat_hdr.addWidget(mat_title)
         mat_hdr.addStretch()
-        self.select_all_btn = QPushButton("Select All")
-        self.select_all_btn.setFlat(True)
-        self.select_all_btn.setCursor(Qt.PointingHandCursor)
-        self.select_all_btn.setStyleSheet(
-            "QPushButton { color: #0066cc; font-size: 11px; border: none; padding: 0 4px; }"
-            "QPushButton:hover { color: #004499; text-decoration: underline; }"
-        )
-        self.select_all_btn.clicked.connect(self._select_all_valid)
-        mat_hdr.addWidget(self.select_all_btn)
         self.hide_assigned_chk = QCheckBox("Hide assigned")
         self.hide_assigned_chk.toggled.connect(self._on_hide_assigned)
         mat_hdr.addWidget(self.hide_assigned_chk)
         ll.addLayout(mat_hdr)
 
+        # Search bar + Select button on the same row
+        search_row = QHBoxLayout()
+        search_row.setSpacing(6)
         self.search_in = QLineEdit()
         self.search_in.setPlaceholderText("🔍  Search materials...")
         self.search_in.setMinimumHeight(32)
         self.search_in.textChanged.connect(self._on_search)
-        ll.addWidget(self.search_in)
+        search_row.addWidget(self.search_in)
+
+        self.select_all_btn = QPushButton("Select with Qty")
+        self.select_all_btn.setFixedHeight(32)
+        self.select_all_btn.setMinimumWidth(110)
+        self.select_all_btn.setCursor(Qt.PointingHandCursor)
+        self.select_all_btn.setToolTip(
+            "Selects all visible unassigned materials that have a non-zero quantity and a known kg/unit factor.\n"
+            "Rows with no quantity or no kg conversion are skipped."
+        )
+        self.select_all_btn.clicked.connect(self._select_all_valid)
+        search_row.addWidget(self.select_all_btn)
+        ll.addLayout(search_row)
 
         self.mat_table = QTableWidget()
         self.mat_table.setColumnCount(6)
         self.mat_table.setHorizontalHeaderLabels(
-            ["", "Material", "Category", "Unit", "Qty (kg)", "kg / unit"]
+            ["", "Material", "Category", "Unit", "kg / unit", "Qty (kg)"]
         )
         self.mat_table.verticalHeader().setVisible(False)
         self.mat_table.setEditTriggers(QTableWidget.NoEditTriggers)
@@ -256,8 +262,8 @@ class TransportDialog(QDialog):
         h.setSectionResizeMode(1, QHeaderView.Stretch)
         h.setSectionResizeMode(2, QHeaderView.ResizeToContents)
         h.setSectionResizeMode(3, QHeaderView.ResizeToContents)
-        h.setSectionResizeMode(4, QHeaderView.ResizeToContents)
-        self.mat_table.setColumnWidth(5, 120)
+        self.mat_table.setColumnWidth(4, 120)
+        h.setSectionResizeMode(5, QHeaderView.ResizeToContents)
         ll.addWidget(self.mat_table)
 
         self.mat_count_lbl = QLabel("")
@@ -439,6 +445,7 @@ class TransportDialog(QDialog):
                         chk = QCheckBox()
                         chk.setChecked(mat_uuid in saved_kg)
                         chk.stateChanged.connect(self._update_summary)
+                        chk.stateChanged.connect(lambda _: self._refresh_select_all_label())
                         cl.addWidget(chk)
                         self.mat_table.setItem(row, 0, QTableWidgetItem())
                         self.mat_table.setCellWidget(row, 0, chk_w)
@@ -464,40 +471,32 @@ class TransportDialog(QDialog):
                     self.mat_table.setItem(row, 2, ci)
 
                     # Col 3 — unit
-                    ui = QTableWidgetItem(unit if unit else "—")
+                    ui = QTableWidgetItem(UNIT_DISPLAY.get(unit.lower(), unit) if unit else "—")
                     ui.setTextAlignment(Qt.AlignCenter)
                     ui.setFlags(_no_interact)
                     if is_assigned:
                         ui.setForeground(QColor("#aaaaaa"))
                     self.mat_table.setItem(row, 3, ui)
 
-                    # Col 4 — qty in kg
-                    qi = QTableWidgetItem(f"{qty_kg:,.0f}" if qty_kg > 0 else "—")
-                    qi.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
-                    qi.setData(Qt.UserRole, qty_kg)
-                    qi.setFlags(_no_interact)
-                    if is_assigned:
-                        qi.setForeground(QColor("#aaaaaa"))
-                    self.mat_table.setItem(row, 4, qi)
-
-                    # Col 5 — kg / unit
+                    # Col 4 — kg / unit
                     if is_assigned:
                         ai = QTableWidgetItem("—")
                         ai.setTextAlignment(Qt.AlignCenter)
                         ai.setForeground(QColor("#aaaaaa"))
                         ai.setFlags(_no_interact)
-                        self.mat_table.setItem(row, 5, ai)
+                        self.mat_table.setItem(row, 4, ai)
                     elif is_mass:
                         fi = QTableWidgetItem(f"{kg_factor:g}" if kg_factor > 0 else "")
                         fi.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
                         fi.setData(Qt.UserRole, kg_factor)
                         fi.setFlags(_no_interact)
                         fi.setToolTip("Auto-calculated from unit definition")
-                        self.mat_table.setItem(row, 5, fi)
+                        self.mat_table.setItem(row, 4, fi)
                     else:
                         prefill = saved_kg.get(mat_uuid, kg_factor)
                         edit = QLineEdit("" if prefill <= 0 else f"{prefill:g}")
                         edit.setPlaceholderText("kg per unit")
+                        edit.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
                         edit.setValidator(QDoubleValidator(0, 1e9, 4))
                         if kg_from_carbon:
                             edit.setToolTip(
@@ -509,8 +508,17 @@ class TransportDialog(QDialog):
                         )
                         sort_item = QTableWidgetItem()
                         sort_item.setData(Qt.UserRole, prefill)
-                        self.mat_table.setItem(row, 5, sort_item)
-                        self.mat_table.setCellWidget(row, 5, edit)
+                        self.mat_table.setItem(row, 4, sort_item)
+                        self.mat_table.setCellWidget(row, 4, edit)
+
+                    # Col 5 — qty in kg
+                    qi = QTableWidgetItem(f"{qty_kg:,.0f}" if qty_kg > 0 else "—")
+                    qi.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
+                    qi.setData(Qt.UserRole, qty_kg)
+                    qi.setFlags(_no_interact)
+                    if is_assigned:
+                        qi.setForeground(QColor("#aaaaaa"))
+                    self.mat_table.setItem(row, 5, qi)
 
                     self._rows_metadata.append({
                         "uuid":          mat_uuid,
@@ -522,6 +530,17 @@ class TransportDialog(QDialog):
                         "qty_kg":        qty_kg,
                         "is_assigned":   is_assigned,
                     })
+
+                    # Dim rows with no quantity — communicate they'll be skipped by Select with Qty
+                    if qty == 0 and not is_assigned:
+                        _dim = QColor("#aaaaaa")
+                        _no_qty_tip = "No quantity defined in structure — skipped by 'Select with Qty'"
+                        for col in [1, 2, 3, 5]:
+                            it = self.mat_table.item(row, col)
+                            if it:
+                                it.setForeground(_dim)
+                                it.setToolTip(_no_qty_tip)
+                                f = it.font(); f.setItalic(True); it.setFont(f)
 
         # Sorting is intentionally disabled: cell widgets (QLineEdit) capture
         # the row index at insertion time, so physical row reordering would
@@ -536,11 +555,11 @@ class TransportDialog(QDialog):
             qty_kg = qty * val
             self._rows_metadata[row]["kg_factor"] = val
             self._rows_metadata[row]["qty_kg"]    = qty_kg
-            item = self.mat_table.item(row, 4)
+            item = self.mat_table.item(row, 5)
             if item:
                 item.setText(f"{qty_kg:,.0f}" if qty_kg > 0 else "—")
                 item.setData(Qt.UserRole, qty_kg)
-            sort = self.mat_table.item(row, 5)
+            sort = self.mat_table.item(row, 4)
             if sort:
                 sort.setData(Qt.UserRole, val)
             self._update_summary()
@@ -566,18 +585,44 @@ class TransportDialog(QDialog):
         self._on_search(self.search_in.text())
 
     def _select_all_valid(self):
-        """Check all unassigned materials that are not already checked."""
+        """Toggle: if all visible, unassigned, qty>0, kg>0 materials are checked → deselect; else → select."""
+        checkboxes = []
         for row in range(self.mat_table.rowCount()):
+            if self.mat_table.isRowHidden(row):
+                continue
             if row >= len(self._rows_metadata):
                 continue
-            if self._rows_metadata[row].get("is_assigned"):
+            meta = self._rows_metadata[row]
+            if meta.get("is_assigned"):
+                continue
+            if meta.get("qty", 0) <= 0:
+                continue
+            if meta.get("kg_factor", 0) <= 0:
                 continue
             chk_w = self.mat_table.cellWidget(row, 0)
             if chk_w is None:
                 continue
-            chk = chk_w.layout().itemAt(0).widget()
-            if isinstance(chk, QCheckBox) and not chk.isChecked():
-                chk.setChecked(True)
+            chk = chk_w.findChild(QCheckBox)
+            if chk is not None:
+                checkboxes.append(chk)
+
+        if not checkboxes:
+            return
+
+        all_checked = all(c.isChecked() for c in checkboxes)
+        target = not all_checked
+
+        # Block signals during bulk set to avoid redundant intermediate refreshes
+        for chk in checkboxes:
+            chk.blockSignals(True)
+        for chk in checkboxes:
+            chk.setChecked(target)
+        for chk in checkboxes:
+            chk.blockSignals(False)
+
+        # Single update after all checkboxes are set
+        self._update_summary()
+        self.select_all_btn.setText("Deselect All" if target else "Select with Qty")
 
     def _refresh_mat_count(self):
         visible = sum(
@@ -586,6 +631,35 @@ class TransportDialog(QDialog):
         )
         total = self.mat_table.rowCount()
         self.mat_count_lbl.setText(f"Showing {visible} of {total} materials")
+        self._refresh_select_all_label()
+
+    def _refresh_select_all_label(self):
+        """Keep Select with Qty / Deselect All label in sync (only considers qty>0, kg>0 rows)."""
+        all_checked = True
+        any_visible = False
+        for row in range(self.mat_table.rowCount()):
+            if self.mat_table.isRowHidden(row):
+                continue
+            if row >= len(self._rows_metadata):
+                continue
+            meta = self._rows_metadata[row]
+            if meta.get("is_assigned"):
+                continue
+            if meta.get("qty", 0) <= 0:
+                continue
+            if meta.get("kg_factor", 0) <= 0:
+                continue
+            chk_w = self.mat_table.cellWidget(row, 0)
+            if chk_w is None:
+                continue
+            chk = chk_w.findChild(QCheckBox)
+            if chk is not None:
+                any_visible = True
+                if not chk.isChecked():
+                    all_checked = False
+        if not any_visible:
+            return
+        self.select_all_btn.setText("Deselect All" if all_checked else "Select with Qty")
 
     # ── Live summary ──────────────────────────────────────────────────
 
@@ -605,7 +679,7 @@ class TransportDialog(QDialog):
                 continue
             chk = chk_w.findChild(QCheckBox)
             if chk and chk.isChecked():
-                qty_kg = (self.mat_table.item(row, 4).data(Qt.UserRole) or 0.0)
+                qty_kg = (self.mat_table.item(row, 5).data(Qt.UserRole) or 0.0)
                 total_kg += qty_kg
                 selected_count += 1
 
@@ -681,14 +755,14 @@ class TransportDialog(QDialog):
                 continue
 
             meta  = self._rows_metadata[row]
-            edit  = self.mat_table.cellWidget(row, 5)
+            edit  = self.mat_table.cellWidget(row, 4)
             if isinstance(edit, QLineEdit):
                 try:
                     kg_factor = float(edit.text() or 0)
                 except ValueError:
                     kg_factor = 0.0
             else:
-                kg_factor = (self.mat_table.item(row, 5).data(Qt.UserRole) or 0.0)
+                kg_factor = (self.mat_table.item(row, 4).data(Qt.UserRole) or 0.0)
 
             result.append({
                 "uuid":      meta["uuid"],

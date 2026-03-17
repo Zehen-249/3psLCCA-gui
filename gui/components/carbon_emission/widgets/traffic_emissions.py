@@ -12,7 +12,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 from PySide6.QtCore import Qt, QSize
-from PySide6.QtGui import QColor
+from PySide6.QtGui import QBrush, QColor
 
 from ...base_widget import ScrollableForm
 from ...utils.form_builder.form_definitions import FieldDef
@@ -38,14 +38,14 @@ _VEHICLES = [
 ]
 
 DEFAULT_FACTORS: dict[str, float] = {
-    "small_cars": 0.12,
-    "big_cars": 0.20,
-    "two_wheelers": 0.04,
-    "o_buses": 0.55,
-    "d_buses": 0.60,
-    "lcv": 0.30,
-    "hcv": 0.85,
-    "mcv": 0.65,
+    "small_cars": 0.1030,
+    "big_cars": 0.2690,
+    "two_wheelers": 0.0351,
+    "o_buses": 0.4548,
+    "d_buses": 0.6064,
+    "lcv": 0.3070,
+    "hcv": 0.5928,
+    "mcv": 0.7375,
 }
 
 _MODES = ["Calculate by Vehicle", "Enter Directly"]
@@ -70,8 +70,6 @@ _COL_EMISSIONS = 3
 
 _YELLOW_BG = QColor(255, 255, 180)
 _YELLOW_FG = QColor(100, 80, 0)
-_NORMAL_BG = QColor(255, 255, 255)
-_NORMAL_FG = QColor(0, 0, 0)
 
 
 class _EmissionsTable(QTableWidget):
@@ -202,13 +200,15 @@ class _EmissionsTable(QTableWidget):
             sb.setEnabled(not frozen)
 
     def _set_row_zero_state(self, row: int, key: str, is_zero: bool):
-        bg = _YELLOW_BG if is_zero else _NORMAL_BG
-        fg = _YELLOW_FG if is_zero else _NORMAL_FG
         for col in range(self.columnCount()):
             item = self.item(row, col)
             if item:
-                item.setBackground(bg)
-                item.setForeground(fg)
+                if is_zero:
+                    item.setBackground(_YELLOW_BG)
+                    item.setForeground(_YELLOW_FG)
+                else:
+                    item.setBackground(QBrush())
+                    item.setForeground(QBrush())
         sb = self._factors[key]
         if is_zero:
             sb.setStyleSheet(

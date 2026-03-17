@@ -133,6 +133,7 @@ _VEHICLES = [
     ("mcv", "MCV"),
 ]
 _HAS_PWR = {"hcv", "mcv"}
+_DEFAULT_PWR = {"hcv": 7.22, "mcv": 8.0}
 
 GEN_CHUNK = "general_info"
 CHUNK = "traffic_and_road_data"
@@ -267,7 +268,7 @@ TRAFFIC_FIELDS = [
         required=True,
         warn=(
             0.01,
-            1000,
+            10000,
             "Crash Rate is 0 or unusually high — please verify the value",
         ),
     ),
@@ -358,7 +359,7 @@ class _VehicleTrafficTable(QTableWidget):
                 pwr = QDoubleSpinBox()
                 pwr.setRange(0.0, 999.9)
                 pwr.setDecimals(2)
-                pwr.setValue(7.0)
+                pwr.setValue(_DEFAULT_PWR.get(key, 7.0))
                 pwr.setButtonSymbols(QDoubleSpinBox.NoButtons)
                 pwr.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
                 pwr.valueChanged.connect(self.on_change)
@@ -408,7 +409,7 @@ class _VehicleTrafficTable(QTableWidget):
             self._vpd[key].setValue(int(v.get("vehicles_per_day", 0)))
             self._acc[key].setValue(float(v.get("accident_percentage", 0.0)))
             if key in _HAS_PWR:
-                self._pwr[key].setValue(float(v.get("pwr", 7.0)))
+                self._pwr[key].setValue(float(v.get("pwr", _DEFAULT_PWR.get(key, 7.0))))
         self.blockSignals(False)
 
 
@@ -620,6 +621,7 @@ class TrafficData(ScrollableForm):
         india_layout.addRow(self._vehicle_table)
 
         self._force_free_flow = QCheckBox("Force free-flow conditions off-peak")
+        self._force_free_flow.setChecked(True)
         self._force_free_flow.stateChanged.connect(self._on_field_changed)
         india_layout.addRow(self._force_free_flow)
 
@@ -751,6 +753,7 @@ class TrafficData(ScrollableForm):
         text = self.alternate_road_carriageway.currentText()
         if text == _NONE_LANE:
             self.carriage_width_in_m.setValue(0.0)
+            self.carriage_width_in_m.setEnabled(False)
             self.hourly_capacity.setValue(0)
             self._on_field_changed()
             return
@@ -758,7 +761,12 @@ class TrafficData(ScrollableForm):
         if not lane:
             return
         w = lane.get("width")
-        self.carriage_width_in_m.setValue(float(w) if w is not None else 0.0)
+        if w is not None:
+            self.carriage_width_in_m.setValue(float(w))
+            self.carriage_width_in_m.setEnabled(False)
+        else:
+            self.carriage_width_in_m.setValue(0.0)
+            self.carriage_width_in_m.setEnabled(True)
         self.hourly_capacity.setValue(int(lane.get("capacity", 0)))
         self._on_field_changed()
 
@@ -903,7 +911,7 @@ class TrafficData(ScrollableForm):
         try:
             self._remarks.from_html(data.get("remarks", ""))
             self._force_free_flow.setChecked(
-                bool(data.get("force_free_flow_off_peak", False))
+                bool(data.get("force_free_flow_off_peak", True))
             )
 
             # Translate stored IRC code back to display name for the combo
@@ -1028,6 +1036,9 @@ class TrafficData(ScrollableForm):
                     self.alternate_road_carriageway.setStyleSheet(
                         "QComboBox { border: 1px solid #dc3545; }"
                     )
+                elif hasattr(self, "carriage_width_in_m") and self.carriage_width_in_m.value() == 0.0:
+                    errors.append("Carriageway Width cannot be 0")
+                    self.carriage_width_in_m.setStyleSheet("border: 1px solid #dc3545;")
 
             vehicle_data = self._vehicle_table.collect_to_dict()
             total_vpd = sum(v["vehicles_per_day"] for v in vehicle_data.values())

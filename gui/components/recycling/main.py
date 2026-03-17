@@ -15,6 +15,7 @@ from PySide6.QtCore import Qt, QSize, QTimer
 import time
 import datetime
 
+from ..utils.definitions import UNIT_DISPLAY
 
 
 # ---------------------------------------------------------------------------
@@ -34,14 +35,8 @@ CHUNKS = [
 # ---------------------------------------------------------------------------
 
 
-_UNIT_DISPLAY = {
-    "m2": "m²", "m3": "m³", "sqm": "m²", "cum": "m³",
-    "sqft": "sq.ft", "sqyd": "sq.yd",
-}
-
-
 def _fmt_unit(code: str) -> str:
-    return _UNIT_DISPLAY.get(code.lower(), code) if code else code
+    return UNIT_DISPLAY.get(code.lower(), code) if code else code
 
 
 def _recycle_pct(v: dict) -> float:

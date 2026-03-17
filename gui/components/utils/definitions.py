@@ -155,6 +155,32 @@ SI_BASE_UNITS = {
 }
 
 
+# Maps raw unit codes to their pretty display symbols used across the UI.
+# Add or change a symbol here and every widget picks it up automatically.
+UNIT_DISPLAY: dict[str, str] = {
+    # Area
+    "m2":    "m²",
+    "sqm":   "m²",
+    "sqft":  "sq.ft",
+    "sqyd":  "sq.yd",
+    # Volume
+    "m3":    "m³",
+    "cum":   "m³",
+    "cft":   "ft³",
+    # Mass
+    "t":     "t",
+    "tonne": "t",
+    "mt":    "MT",
+    "q":     "q",
+    # Length
+    "rm":    "RM",
+    # Count
+    "nos":   "Nos.",
+    "pcs":   "Pcs.",
+    "ls":    "L.S.",
+}
+
+
 STRUCTURE_CHUNKS = [
     ("str_foundation", "Foundation"),
     ("str_sub_structure", "Sub Structure"),

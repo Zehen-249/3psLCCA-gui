@@ -233,7 +233,7 @@ class _EquipmentRow:
 
         self.hrs = QDoubleSpinBox()
         self.hrs.setRange(0.0, 24.0)
-        self.hrs.setDecimals(1)
+        self.hrs.setDecimals(3)
         self.hrs.setButtonSymbols(QDoubleSpinBox.NoButtons)
         self.hrs.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         self.hrs.valueChanged.connect(on_change)

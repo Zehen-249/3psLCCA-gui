@@ -9,6 +9,7 @@ from PySide6.QtWidgets import (
     QMessageBox,
 )
 from PySide6.QtCore import Qt, QSize
+from ...utils.definitions import UNIT_DISPLAY
 
 
 class StructureTableWidget(QTableWidget):
@@ -97,8 +98,7 @@ class StructureTableWidget(QTableWidget):
 
         # 2. Qty
         unit = v.get("unit", "")
-        _UNIT_DISPLAY = {"m2": "m²", "m3": "m³", "sqm": "m²", "cum": "m³", "sqft": "sq.ft", "sqyd": "sq.yd"}
-        unit = _UNIT_DISPLAY.get(unit.lower(), unit) if unit else unit
+        unit = UNIT_DISPLAY.get(unit.lower(), unit) if unit else unit
         qty_text = f"{v.get('quantity', 0)} {unit}".strip()
         qty_item = QTableWidgetItem(qty_text)
         qty_item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
